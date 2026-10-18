@@ -1,0 +1,460 @@
+\documentclass[11pt,letterpaper]{article}
+
+% ===== Packages =====
+\usepackage[margin=0.88in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{algorithm,algpseudocode,float}
+\usepackage{fancyhdr}
+\usepackage[hidelinks,bookmarks=false]{hyperref}
+
+% ===== Presentation =====
+\definecolor{navy}{HTML}{173452}
+\definecolor{todoink}{HTML}{9A542C}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlist[itemize]{leftmargin=1.5em,itemsep=1pt,topsep=3pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small CPSC 433 -- Project Proposal}
+\fancyhead[R]{\small Three Search Paradigms}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+\renewcommand{\headrulewidth}{0.35pt}
+\newcommand{\TODO}[1]{\par\noindent{\color{todoink}\textbf{[TO FILL:} #1\textbf{]}}\par}
+
+% ===== Mathematical notation =====
+\newcommand{\Const}{\operatorname{Const}}
+\newcommand{\Consistent}{\operatorname{Consistent}}
+\newcommand{\Eval}{\operatorname{Eval}}
+\newcommand{\domn}{\operatorname{dom}}
+\newcommand{\Assigned}{\operatorname{Assigned}}
+\newcommand{\Prob}{\mathit{Prob}}
+\newcommand{\Altern}{\mathit{Altern}}
+\newcommand{\Div}{\mathit{Div}}
+\newcommand{\Erw}{\mathit{Erw}}
+\newcommand{\EXT}{\mathit{EXT}}
+\newcommand{\Env}{\mathit{Env}}
+\newcommand{\Inst}{\mathit{Inst}}
+\newcommand{\Otree}{\mathit{Otree}}
+\newcommand{\Atree}{\mathit{Atree}}
+\newcommand{\yes}{\mathsf{yes}}
+\newcommand{\no}{\mathsf{no}}
+\newcommand{\und}{\mathord{?}}
+\newcommand{\Schedule}{\mathsf{Schedule}}
+\newcommand{\Verify}{\mathsf{Verify}}
+\newcommand{\Best}{\mathsf{Best}}
+\newcommand{\LB}{\mathsf{LB}}
+\newcommand{\Score}{\mathsf{Score}}
+
+\begin{document}
+
+% ===== Cover =====
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Large University of Calgary\\CPSC 433 -- Artificial Intelligence\par}
+\vspace{1.6cm}
+{\Huge\bfseries Course Timetabling via\\Three Search Paradigms\par}
+\vspace{0.8cm}
+{\Large OR-Tree Feasibility, Set-Based Improvement,\\and AND-Tree Optimization\par}
+\vspace{1.5cm}
+{\large Formal Search Models and Processes -- Proposal\par}
+\vfill
+\begin{tabular}{ll}
+Member 1: & Syed Essam Uddin Khawaja 30242943\\[7pt]
+Member 2: & [NAME / UCID]\\[7pt]
+Member 3: & [NAME / UCID]\\[7pt]
+Member 4: & [NAME / UCID]\\[7pt]
+Member 5: & [NAME / UCID]\\[7pt]
+Date: & [SUBMISSION DATE]
+\end{tabular}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ===== Summary =====
+\begin{abstract}
+\TODO{Write 150--200 words: problem, all three paradigms, different state representations, search controls, and the benefit/limitation of each. Write this last.}
+\end{abstract}
+
+\section{Introduction}
+\subsection{Scheduling problem and motivation}
+\TODO{Describe the University of Calgary weekly lecture/tutorial scheduling problem. Distinguish hard constraints from soft penalties.}
+
+\subsection{Models proposed}
+We consider three search paradigms:
+\begin{itemize}
+  \item \textbf{OR-tree}: find one feasible timetable.
+  \item \textbf{Set-based}: improve a feasible timetable through local changes.
+  \item \textbf{AND-tree}: systematically explore scheduling decisions to seek a globally optimal timetable, using branch-and-bound.
+\end{itemize}
+\TODO{Explain whether the three models will be proposed as independent alternatives, a sequential hybrid, or both. State clearly what the instructor would select to implement.}
+
+\section{Formal Scheduling Problem}
+\subsection{Components, slots, and domains}
+Let $L$ be the set of lectures, $T$ the set of tutorials/labs, and $X=L\cup T$ the full set of schedulable components. Let $S$ be the weekly slot set, and $D(x)\subseteq S$ the allowed slots for component $x\in X$.
+A complete timetable is a function
+\begin{equation}
+  a:X\to S,\qquad a(x)\in D(x)\ \text{for every }x\in X.
+\end{equation}
+A \emph{partial assignment} $a$ is defined only on $\domn(a)\subseteq X$.
+\TODO{Specify exact MWF, TR, MW, and Friday slot patterns; distinguish lecture and tutorial domains. Explain abstract weekly slots and real-time overlap.}
+
+\subsection{Hard constraints}
+Let $C_1,\ldots,C_h$ be the required hard constraints. Define
+\begin{equation}
+  \boxed{\Const(a)=\bigwedge_{i=1}^{h}C_i(a)}.
+\end{equation}
+For partial assignments, $\Consistent(a)$ means none of the hard constraints that can already be evaluated is violated.
+\TODO{Formalize all required constraints: lecture/tutorial capacities, active-learning limits, lecture--tutorial compatibility, not-compatible pairs, preassignments, unwanted slots, LEC 9 evening, 5XX non-overlap, TR 11:00--12:30 restriction, and conditional CPSC 851/913 bookings. State how shared tutorials are interpreted.}
+
+\subsection{Soft constraints and objective}
+Let the five penalty terms represent minimum lecture occupancy, minimum tutorial occupancy, preferences, requested pairings, and same-course lecture sections:
+\begin{equation}
+\boxed{\begin{aligned}
+\Eval(a)={}&E_{L\min}(a)+E_{T\min}(a)+E_{\mathrm{pref}}(a)\\
+&+E_{\mathrm{pair}}(a)+E_{\mathrm{section}}(a).
+\end{aligned}}
+\end{equation}
+The optimization problem is
+\begin{equation}
+  \boxed{\min_a\Eval(a)\quad\text{subject to }\Const(a)=\mathsf{true}.}
+\end{equation}
+\TODO{Give all five penalty formulas with their input parameters. Note that penalties are nonnegative.}
+
+\section{Overall Search Architecture}
+\subsection{How the models relate}
+Our optional combined pipeline is
+\begin{equation}
+\boxed{\begin{gathered}
+\text{OR-tree}\ \longrightarrow\ a_{\mathrm{feasible}}\\[-1pt]
+\downarrow\\[-1pt]
+\text{Set-based improvement}\ \longrightarrow\ a_{\mathrm{best}}\\[-1pt]
+\downarrow\\[-1pt]
+\text{AND-tree branch-and-bound, initialized with }a_{\mathrm{best}}.
+\end{gathered}}
+\end{equation}
+The AND-tree explores the \emph{original scheduling choices}, not merely the local neighbors visited by set-based search. It can establish optimality only if its search completes with sound pruning.
+\TODO{Discuss the option to run OR-tree + Set-based without exact AND-tree optimization, or OR-tree + AND-tree directly. Distinguish the three paradigms in their own right.}
+
+% ===== OR =====
+\section{Model I: OR-Tree Feasibility Search}
+\subsection{Search model: $A_{\lor}=(S_{\lor},T_{\lor})$}
+\paragraph{Problem descriptions.}
+\begin{equation}
+\boxed{\Prob_{\lor}=\{(a,U):a\text{ is partial},\ U=X\setminus\domn(a)\}.}
+\end{equation}
+Here $a$ is the current partial timetable, and $U$ contains unscheduled components. A node has the lecture's form
+\begin{equation}
+  ((a,U),sol),\qquad sol\in\{\yes,\und,\no\}.
+\end{equation}
+\paragraph{Alternatives.}
+Select a component $x\in U$ and define
+\begin{equation}
+  D_a(x)=\{s\in D(x):\Consistent(a\cup\{x\mapsto s\})\}.
+\end{equation}
+For every $s_i\in D_a(x)$, let
+\begin{equation}
+  pr_i=(a\cup\{x\mapsto s_i\},U\setminus\{x\}).
+\end{equation}
+Then the application-specific alternative relation is
+\begin{equation}
+  \boxed{\Altern(pr,pr_1,\ldots,pr_r),\qquad r=|D_a(x)|.}
+\end{equation}
+\paragraph{States and transitions.}
+Following Lecture 11,
+\begin{equation}
+  S_{\lor}\subseteq\Otree,\qquad
+  T_{\lor}=\{(q,q'): \Erw_{\lor}(q,q')\text{ or }\Erw_{\lor}^{*}(q,q')\}.
+\end{equation}
+The extension relation marks a solved leaf $\yes$, marks an unsolvable leaf $\no$, or expands a leaf using $\Altern$. Extensions can act on leaves inside a larger tree.
+\TODO{Write the four formal $\Erw_{\lor}$ cases from Lecture 11, using the definitions above.}
+
+\subsection{Search process: $P_{\lor}=(A_{\lor},\Env_{\lor},K_{\lor})$}
+\TODO{Define $\Env_{\lor}$, leaf selection, and slot ordering. Proposed $K_{\lor}$: depth-first unfinished-leaf selection and MRV component selection. No forward checking is necessary for correctness.}
+The MRV component selection is
+\begin{equation}
+  \boxed{x^*=\arg\min_{x\in U}|D_a(x)|.}
+\end{equation}
+
+\subsection{Search instance: $\Inst_{\lor}=(q_0,G_{\lor})$}
+Start with
+\begin{equation}
+  a_0=\varnothing,\quad U_0=X,\quad q_0=((a_0,U_0),\und).
+\end{equation}
+A leaf is solved if $U=\varnothing$ and $\Const(a)$ is true. The search halts when a solved branch exists or all alternatives have failed; these are distinct outcomes.
+\TODO{Define $G_{\lor}$ recursively in terms of the tree and distinguish success from exhaustive failure.}
+
+\subsection{Algorithm 1: OR-tree feasibility}
+\begin{algorithm}[H]
+\caption{OR-Tree Feasibility Search (operational outline)}
+\begin{algorithmic}[1]
+\Require Components $X$, domains $D$, partial checker $\Consistent$
+\Ensure Complete valid timetable, or FAILURE
+\State Initialize tree $q\gets((\varnothing,X),\und)$
+\While{an unresolved leaf exists}
+  \State $v\gets$ deepest unresolved leaf of $q$
+  \State $(a,U)\gets$ problem description at $v$
+  \If{$U=\varnothing$}
+    \If{$\Const(a)$}
+      \State Mark $v$ as $\yes$; \Return $a$
+    \Else
+      \State Mark $v$ as $\no$; \State \textbf{continue}
+    \EndIf
+  \EndIf
+  \State $x\gets\arg\min_{y\in U}|D_a(y)|$ \Comment{MRV}
+  \State $C\gets D_a(x)$
+  \If{$C=\varnothing$}
+    \State Mark $v$ as $\no$
+  \Else
+    \ForAll{$s\in C$ in deterministic slot order}
+      \State Add child $((a\cup\{x\mapsto s\},U\setminus\{x\}),\und)$ to $v$
+    \EndFor
+  \EndIf
+\EndWhile
+\State \Return FAILURE
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Worked OR-tree derivation}
+\TODO{Starting with $a_0=\varnothing$ and $U_0=X$, show every intermediate $(a_i,U_i)$; draw an OR-tree with at least one failing alternative and one solved leaf. Explain why the search stops on its first successful path.}
+
+% ===== SET =====
+\section{Model II: Set-Based Local Optimization}
+\subsection{Search model: $A_{set}=(S_{set},T_{set})$}
+\paragraph{Facts.}
+\begin{equation}
+  \boxed{F=\{\Assigned(x,s):x\in X,\ s\in D(x)\}.}
+\end{equation}
+The fact $\Assigned(x,s)$ means that component $x$ occupies weekly slot $s$.
+\paragraph{States.}
+\begin{equation}
+  \boxed{S_{set}=\{q\subseteq F:q\text{ encodes one complete valid timetable}\}\subseteq2^F.}
+\end{equation}
+For any $q\in S_{set}$, let $a_q$ be the complete timetable that its facts represent.
+\paragraph{Extensions.}
+\begin{equation}
+\begin{aligned}
+\text{Move: }&\{\Assigned(x,s_1)\}\longrightarrow\{\Assigned(x,s_2)\};\\
+\text{Swap: }&\{\Assigned(x,s_1),\Assigned(y,s_2)\}\\
+&\hspace{13mm}\longrightarrow\{\Assigned(x,s_2),\Assigned(y,s_1)\}.
+\end{aligned}
+\end{equation}
+Here $x,y$ are distinct components and $s_1,s_2$ are their current slots. The rules are applicable only if domains, preassignments, and all hard constraints are respected in the resulting timetable.
+\begin{equation}
+  \boxed{q'=(q\setminus A)\cup B,\qquad A\to B\in\EXT.}
+\end{equation}
+\begin{equation}
+  T_{set}=\{(q,q'):A\to B\in\EXT,\ A\subseteq q,\ q'=(q\setminus A)\cup B,\ q'\in S_{set}\}.
+\end{equation}
+
+\subsection{Search process: $P_{set}=(A_{set},\Env_{set},K_{set})$}
+The proposed greedy weight function is
+\begin{equation}
+  \boxed{f_{weight}(A,B,e)=\Eval(a_{(q\setminus A)\cup B}),}
+\end{equation}
+where the environment $e$ provides the current timetable $q$ and other problem information. The function $f_{select}$ breaks ties between equally weighted extensions.
+\TODO{Define $\Env_{set}$, $f_{select}$, the strict-improvement condition, and the neighborhood $N(q)$. Explain the possibility of getting stuck at a local optimum.}
+
+\subsection{Search instance: $\Inst_{set}=(q_0,G_{set})$}
+The OR-tree produces $a_{\mathrm{feasible}}$. The set-based starting state is
+\begin{equation}
+  \boxed{q_0=\{\Assigned(x,a_{\mathrm{feasible}}(x)):x\in X\}.}
+\end{equation}
+\TODO{Define a practical goal/stopping condition: score zero, no improving neighbor, or a specified search budget.}
+
+\subsection{Algorithm 2: Set-based hill climbing}
+\begin{algorithm}[H]
+\caption{Set-Based Optimization}
+\begin{algorithmic}[1]
+\Require Feasible timetable $a_{\mathrm{feasible}}$, $\EXT$, $\Eval$
+\Ensure Improved valid timetable
+\State $q\gets\{\Assigned(x,a_{\mathrm{feasible}}(x)):x\in X\}$
+\While{$\Eval(a_q)>0$}
+  \State $N\gets\{q':(q,q')\in T_{set},\ q'\ne q\}$
+  \If{$N=\varnothing$}
+    \State \Return $a_q$
+  \EndIf
+  \State $m\gets\min_{q'\in N}\Eval(a_{q'})$
+  \If{$m\ge\Eval(a_q)$}
+    \State \Return $a_q$ \Comment{Local optimum}
+  \EndIf
+  \State $q\gets f_{select}(\{q'\in N:\Eval(a_{q'})=m\})$
+\EndWhile
+\State \Return $a_q$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Worked set-based derivation}
+\TODO{Represent the OR-tree solution as facts. Show Move and optionally Swap using $q'=(q\setminus A)\cup B$. Give before/after evaluation values and verify $\Const(a_{q'})$.}
+
+% ===== AND =====
+\section{Model III: AND-Tree Optimization}
+\subsection{Motivation and difference from OR-tree}
+An OR-tree requires \emph{one} successful alternative. An AND-tree requires the chosen division's subproblems to \emph{all} be solved and mutually compatible. For optimization, different divisions must also be compared to find the best result. The AND-tree may backtrack to another division if the current one fails or cannot beat an existing solution.
+\TODO{Explain why AND-tree plus branch-and-bound is a reasonable alternative to local set-based optimization. Cite Lecture 09.}
+
+\subsection{Search model: $A_{\wedge}=(S_{\wedge},T_{\wedge})$}
+\paragraph{Problem descriptions.}
+We propose two kinds of problem description:
+\begin{equation}
+\boxed{\begin{aligned}
+\Prob_{\wedge}=\;&\{\Schedule(a,U)\}\ \cup\ \{\Verify(a,x,s)\}.
+\end{aligned}}
+\end{equation}
+Here $\Schedule(a,U)$ asks for a completion of partial assignment $a$ on the remaining components $U$. The problem $\Verify(a,x,s)$ asks whether putting component $x$ in slot $s$ is consistent with the current timetable $a$.
+\paragraph{Division relation.}
+Select $x\in U$ and a candidate $s\in D(x)$. One possible division is
+\begin{equation}
+\boxed{\begin{aligned}
+\Div\big(&\Schedule(a,U),\\
+&\Verify(a,x,s),\\
+&\Schedule(a\cup\{x\mapsto s\},U\setminus\{x\})\big).
+\end{aligned}}
+\end{equation}
+The division has \emph{two necessary subproblems}: check the new assignment, and schedule everything remaining with the new assignment fixed. A different candidate $s$ produces a different possible $\Div$ choice. Thus this is an AND division, not an OR-tree $\Altern$ list.
+\paragraph{Solved / failed subproblems.}
+\begin{align}
+\Verify(a,x,s)\text{ is solved}&\iff\Consistent(a\cup\{x\mapsto s\}),\\
+\Schedule(a,\varnothing)\text{ is solved}&\iff\Const(a)=\mathsf{true}.
+\end{align}
+If verification fails, that division cannot succeed. The controller must try a different division by the lecture's AND-tree backtracking mechanism.
+\paragraph{States and transitions.}
+Lecture 09 defines
+\begin{equation}
+\boxed{S_{\wedge}\subseteq\Atree,\quad sol\in\{\yes,\und\}.}
+\end{equation}
+An AND-tree state is an entire tree of subproblems, not a single partial assignment. Its transitions follow the lecture's expansion and contraction relations:
+\begin{equation}
+  \boxed{T_{\wedge}=\{(q,q'):\Erw_{\wedge}(q,q')\text{ or }\Erw_{\wedge}^{*}(q,q')\}.}
+\end{equation}
+\TODO{State the formal AND-tree $\Erw_{\wedge}$ and $\Erw_{\wedge}^{*}$ rules from Lecture 09. Explain why AND-trees use $\yes$ and $\und$ rather than an explicit $\no$ node status, and how contraction/backtracking handles failed divisions.}
+
+\subsection{Search process: $P_{\wedge}=(A_{\wedge},\Env_{\wedge},K_{\wedge})$}
+We propose MRV for selecting the next component and branch-and-bound for choosing/pruning divisions. The environment records the best complete timetable found so far, $a_{\Best}$, and its score
+\begin{equation}
+  \boxed{B=\Eval(a_{\Best}).}
+\end{equation}
+The valid timetable returned by OR-tree (or improved by set-based search) provides the initial incumbent $a_{\Best}$.
+For a partial timetable $a$, let $\LB(a,U)$ be a sound lower bound on the penalty of \emph{every complete valid extension} of $a$. Then
+\begin{equation}
+\boxed{\LB(a,U)\ge B\quad\Longrightarrow\quad\text{prune this division}.}
+\end{equation}
+The lower bound must satisfy
+\begin{equation}
+  \boxed{\LB(a,U)\le\Eval(\widehat a)}
+\end{equation}
+for every feasible completion $\widehat a$ of $a$.
+\TODO{Define a concrete admissible lower bound. A safe initial bound is the sum of nonnegative preference and pair/section penalties already made unavoidable by assigned components; omit uncertain minimum-occupancy penalties. Explain how $f_{leaf}$ and $f_{trans}$ select a leaf and a division.}
+
+\subsection{Search instance: $\Inst_{\wedge}=(q_0,G_{\wedge})$}
+Begin the AND-tree optimization from the original problem, but pass the best known complete timetable as a bound:
+\begin{equation}
+\boxed{q_0=(\Schedule(\varnothing,X),\und).}
+\end{equation}
+\TODO{Define $G_{\wedge}$ using Lecture 09: root solved, all subproblems solved compatibly, or every applicable division/backtracking option exhausted. Specify separately what certifies optimality: all better candidates have been examined or soundly pruned.}
+
+\subsection{Algorithm 3: AND-tree branch-and-bound}
+\begin{algorithm}[H]
+\caption{AND-Tree Optimization (control implementing $\Div$)}
+\begin{algorithmic}[1]
+\Require Original CSP, a complete valid incumbent $a_{\Best}$
+\Ensure Best valid schedule found; optimal if exhaustive
+\State $B\gets\Eval(a_{\Best})$
+\Procedure{Optimize}{$a,U$}
+  \If{$\LB(a,U)\ge B$}
+    \State \Return \Comment{Soundly pruned division}
+  \EndIf
+  \If{$U=\varnothing$}
+    \If{$\Const(a)$ \textbf{and} $\Eval(a)<B$}
+      \State $a_{\Best}\gets a$; $B\gets\Eval(a)$
+    \EndIf
+    \State \Return
+  \EndIf
+  \State $x\gets\arg\min_{y\in U}|D_a(y)|$ \Comment{MRV}
+  \ForAll{$s\in D(x)$}
+    \State Consider division $\Div(\Schedule(a,U),$
+    \Statex \hspace{23mm}$\Verify(a,x,s),\Schedule(a\cup\{x\mapsto s\},U\setminus\{x\}))$
+    \If{$\Consistent(a\cup\{x\mapsto s\})$} \Comment{Verify child}
+      \State \Call{Optimize}{$a\cup\{x\mapsto s\},U\setminus\{x\}$} \Comment{Remaining child}
+    \EndIf
+    \State \Comment{If needed, try alternate $\Div$ (AND-tree backtracking)}
+  \EndFor
+\EndProcedure
+\State \Call{Optimize}{$\varnothing,X$}
+\State \Return $a_{\Best}$ and completion/optimality status
+\end{algorithmic}
+\end{algorithm}
+This is operational pseudocode for the branch-and-bound control. The formal model remains an AND-tree with $\Div$ and $\Erw_{\wedge}^{*}$; the recursive procedure implements selecting divisions and exploring them. It is not an OR-tree $\Altern$ relation.
+
+\subsection{Worked AND-tree derivation}
+\TODO{Using the same small timetable instance, show at least two possible $\Div$ choices for LEC 02: MWF 9--10 and MWF 10--11. Expand one AND division into its Verify and Schedule children. Show how the incumbent penalty is updated or how a division is pruned. If the starting incumbent has score zero and penalties are nonnegative, explain why that already certifies global optimality.}
+
+% ===== Three-way =====
+\section{End-to-End Integration and Comparison}
+\subsection{Algorithm 4: Optional combined pipeline}
+\begin{algorithm}[H]
+\caption{Combined Three-Paradigm Pipeline}
+\begin{algorithmic}[1]
+\Require Scheduling instance $I$
+\Ensure Best valid timetable found, or FAILURE
+\State $a_0\gets\Call{ORFeasibility}{I}$
+\If{$a_0=\mathsf{FAILURE}$}
+  \State \Return FAILURE
+\EndIf
+\State $a_1\gets\Call{SetBasedImprove}{I,a_0}$
+\State $a_2\gets\Call{ANDOptimize}{I,a_1}$
+\State \Return $a_2$ \Comment{Optimal only if AND stage completed}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Comparison of the three paradigms}
+\begin{table}[H]
+\centering\small
+\caption{Summary of proposed models}\label{tab:comparison}
+\begin{tabularx}{\linewidth}{@{}lXXX@{}}
+\toprule
+ & OR-tree & Set-based & AND-tree\\
+\midrule
+Purpose & Feasibility & Local improvement & Exact optimization\\
+State & OR-tree & Assignment fact set & AND-tree\\
+Primitive & $\Altern$ & $\EXT$ & $\Div$\\
+Control & DFS + MRV & Hill climbing & Branch-and-bound\\
+Optimal? & Not targeted & Not guaranteed & If complete\\
+\bottomrule
+\end{tabularx}
+\end{table}
+\TODO{Explain each model's pros and cons: search memory, runtime, completeness, and solution quality. Avoid claiming an AND-tree guarantees optimality if the search budget expires.}
+
+\subsection{Unified worked example}
+\TODO{Use one small course-scheduling instance across all three models. Show the OR-tree's first feasible score, set-based's improved score, and AND-tree's exploration/proof of optimality. The same input and penalty parameters must be used in all three worked examples.}
+
+\section{Discussion and Limitations}
+\TODO{Explain why three models may be informative but more complex than required. Discuss infeasible inputs, local minima, sound bounding, valid outputs on timeout, and algorithm selection for large instances.}
+
+\section{Conclusion}
+\TODO{Summarize the three models, their distinct state data structures, and why the proposed architecture is appropriate for the assignment. Do not claim experimentally verified performance before testing.}
+
+\begin{thebibliography}{9}
+\bibitem{project} CPSC 433. \emph{Project Description}, Version 1, University of Calgary, Fall 2025.
+\bibitem{problem} CPSC 433. \emph{Project Problem Description}, Version 1, University of Calgary, Fall 2025.
+\bibitem{search} CPSC 433. \emph{Lecture 05: Search}, University of Calgary.
+\bibitem{set} CPSC 433. \emph{Lecture 06: Set-Based Search}, University of Calgary.
+\bibitem{and} CPSC 433. \emph{Lecture 09: And-Tree-Based Search}, University of Calgary.
+\bibitem{or} CPSC 433. \emph{Lecture 11: Or-Tree-Based Search}, University of Calgary.
+\bibitem{controls} CPSC 433. \emph{Lecture 14: Search Controls}, University of Calgary.
+\end{thebibliography}
+
+\appendix
+\section{Complete Constraint Formulas}
+\TODO{Optional: extended detailed formalization of all hard and soft constraints.}
+\section{Additional Derivations and Search Trees}
+\TODO{Optional: extra OR-tree, AND-tree, and set-based state traces.}
+
+\end{document}
