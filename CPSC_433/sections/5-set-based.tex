@@ -1,0 +1,67 @@
+\section{Model II: Set-Based Local Optimization}
+\subsection{Search model: $A_{set}=(S_{set},T_{set})$}
+\paragraph{Facts.}
+\begin{equation}
+  \boxed{F=\{\Assigned(x,s):x\in X,\ s\in D(x)\}.}
+\end{equation}
+The fact $\Assigned(x,s)$ means that component $x$ occupies weekly slot $s$.
+\paragraph{States.}
+\begin{equation}
+  \boxed{S_{set}=\{q\subseteq F:q\text{ encodes one complete valid timetable}\}\subseteq2^F.}
+\end{equation}
+For any $q\in S_{set}$, let $a_q$ be the complete timetable that its facts represent.
+\paragraph{Extensions.}
+\begin{equation}
+\begin{aligned}
+\text{Move: }&\{\Assigned(x,s_1)\}\longrightarrow\{\Assigned(x,s_2)\};\\
+\text{Swap: }&\{\Assigned(x,s_1),\Assigned(y,s_2)\}\\
+&\hspace{13mm}\longrightarrow\{\Assigned(x,s_2),\Assigned(y,s_1)\}.
+\end{aligned}
+\end{equation}
+Here $x,y$ are distinct components and $s_1,s_2$ are their current slots. The rules are applicable only if domains, preassignments, and all hard constraints are respected in the resulting timetable.
+\begin{equation}
+  \boxed{q'=(q\setminus A)\cup B,\qquad A\to B\in\EXT.}
+\end{equation}
+\begin{equation}
+  T_{set}=\{(q,q'):A\to B\in\EXT,\ A\subseteq q,\ q'=(q\setminus A)\cup B,\ q'\in S_{set}\}.
+\end{equation}
+
+\subsection{Search process: $P_{set}=(A_{set},\Env_{set},K_{set})$}
+The proposed greedy weight function is
+\begin{equation}
+  \boxed{f_{weight}(A,B,e)=\Eval(a_{(q\setminus A)\cup B}),}
+\end{equation}
+where the environment $e$ provides the current timetable $q$ and other problem information. The function $f_{select}$ breaks ties between equally weighted extensions.
+\TODO{Define $\Env_{set}$, $f_{select}$, the strict-improvement condition, and the neighborhood $N(q)$. Explain the possibility of getting stuck at a local optimum.}
+
+\subsection{Search instance: $\Inst_{set}=(q_0,G_{set})$}
+The OR-tree produces $a_{\mathrm{feasible}}$. The set-based starting state is
+\begin{equation}
+  \boxed{q_0=\{\Assigned(x,a_{\mathrm{feasible}}(x)):x\in X\}.}
+\end{equation}
+\TODO{Define a practical goal/stopping condition: score zero, no improving neighbor, or a specified search budget.}
+
+\subsection{Algorithm 2: Set-based hill climbing}
+\begin{algorithm}[H]
+\caption{Set-Based Optimization}
+\begin{algorithmic}[1]
+\Require Feasible timetable $a_{\mathrm{feasible}}$, $\EXT$, $\Eval$
+\Ensure Improved valid timetable
+\State $q\gets\{\Assigned(x,a_{\mathrm{feasible}}(x)):x\in X\}$
+\While{$\Eval(a_q)>0$}
+  \State $N\gets\{q':(q,q')\in T_{set},\ q'\ne q\}$
+  \If{$N=\varnothing$}
+    \State \Return $a_q$
+  \EndIf
+  \State $m\gets\min_{q'\in N}\Eval(a_{q'})$
+  \If{$m\ge\Eval(a_q)$}
+    \State \Return $a_q$ \Comment{Local optimum}
+  \EndIf
+  \State $q\gets f_{select}(\{q'\in N:\Eval(a_{q'})=m\})$
+\EndWhile
+\State \Return $a_q$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Worked set-based derivation}
+\TODO{Represent the OR-tree solution as facts. Show Move and optionally Swap using $q'=(q\setminus A)\cup B$. Give before/after evaluation values and verify $\Const(a_{q'})$.}

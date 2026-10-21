@@ -1,0 +1,31 @@
+\section{Formal Scheduling Problem}
+\subsection{Components, slots, and domains}
+Let $L$ be the set of lectures, $T$ the set of tutorials/labs, and $X=L\cup T$ the full set of schedulable components. Let $S$ be the weekly slot set, and $D(x)\subseteq S$ the allowed slots for component $x\in X$.
+A complete timetable is a function
+\begin{equation}
+  a:X\to S,\qquad a(x)\in D(x)\ \text{for every }x\in X.
+\end{equation}
+A \emph{partial assignment} $a$ is defined only on $\domn(a)\subseteq X$.
+\TODO{Specify exact MWF, TR, MW, and Friday slot patterns; distinguish lecture and tutorial domains. Explain abstract weekly slots and real-time overlap.}
+
+\subsection{Hard constraints}
+Let $C_1,\ldots,C_h$ be the required hard constraints. Define
+\begin{equation}
+  \boxed{\Const(a)=\bigwedge_{i=1}^{h}C_i(a)}.
+\end{equation}
+For partial assignments, $\Consistent(a)$ means none of the hard constraints that can already be evaluated is violated.
+\TODO{Formalize all required constraints: lecture/tutorial capacities, active-learning limits, lecture--tutorial compatibility, not-compatible pairs, preassignments, unwanted slots, LEC 9 evening, 5XX non-overlap, TR 11:00--12:30 restriction, and conditional CPSC 851/913 bookings. State how shared tutorials are interpreted.}
+
+\subsection{Soft constraints and objective}
+Let the five penalty terms represent minimum lecture occupancy, minimum tutorial occupancy, preferences, requested pairings, and same-course lecture sections:
+\begin{equation}
+\boxed{\begin{aligned}
+\Eval(a)={}&E_{L\min}(a)+E_{T\min}(a)+E_{\mathrm{pref}}(a)\\
+&+E_{\mathrm{pair}}(a)+E_{\mathrm{section}}(a).
+\end{aligned}}
+\end{equation}
+The optimization problem is
+\begin{equation}
+  \boxed{\min_a\Eval(a)\quad\text{subject to }\Const(a)=\mathsf{true}.}
+\end{equation}
+\TODO{Give all five penalty formulas with their input parameters. Note that penalties are nonnegative.}

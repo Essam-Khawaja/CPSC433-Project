@@ -1,0 +1,100 @@
+\section{Model III: AND-Tree Optimization}
+\subsection{Motivation and difference from OR-tree}
+An OR-tree requires \emph{one} successful alternative. An AND-tree requires the chosen division's subproblems to \emph{all} be solved and mutually compatible. For optimization, different divisions must also be compared to find the best result. The AND-tree may backtrack to another division if the current one fails or cannot beat an existing solution.
+\TODO{Explain why AND-tree plus branch-and-bound is a reasonable alternative to local set-based optimization. Cite Lecture 09.}
+
+\subsection{Search model: $A_{\wedge}=(S_{\wedge},T_{\wedge})$}
+\paragraph{Problem descriptions.}
+We propose two kinds of problem description:
+\begin{equation}
+\boxed{\begin{aligned}
+\Prob_{\wedge}=\;&\{\Schedule(a,U)\}\ \cup\ \{\Verify(a,x,s)\}.
+\end{aligned}}
+\end{equation}
+Here $\Schedule(a,U)$ asks for a completion of partial assignment $a$ on the remaining components $U$. The problem $\Verify(a,x,s)$ asks whether putting component $x$ in slot $s$ is consistent with the current timetable $a$.
+\paragraph{Division relation.}
+Select $x\in U$ and a candidate $s\in D(x)$. One possible division is
+\begin{equation}
+\boxed{\begin{aligned}
+\Div\big(&\Schedule(a,U),\\
+&\Verify(a,x,s),\\
+&\Schedule(a\cup\{x\mapsto s\},U\setminus\{x\})\big).
+\end{aligned}}
+\end{equation}
+The division has \emph{two necessary subproblems}: check the new assignment, and schedule everything remaining with the new assignment fixed. A different candidate $s$ produces a different possible $\Div$ choice. Thus this is an AND division, not an OR-tree $\Altern$ list.
+\paragraph{Solved / failed subproblems.}
+\begin{align}
+\Verify(a,x,s)\text{ is solved}&\iff\Consistent(a\cup\{x\mapsto s\}),\\
+\Schedule(a,\varnothing)\text{ is solved}&\iff\Const(a)=\mathsf{true}.
+\end{align}
+If verification fails, that division cannot succeed. The controller must try a different division by the lecture's AND-tree backtracking mechanism.
+\paragraph{States and transitions.}
+Lecture 09 defines
+\begin{equation}
+\boxed{S_{\wedge}\subseteq\Atree,\quad sol\in\{\yes,\und\}.}
+\end{equation}
+An AND-tree state is an entire tree of subproblems, not a single partial assignment. Its transitions follow the lecture's expansion and contraction relations:
+\begin{equation}
+  \boxed{T_{\wedge}=\{(q,q'):\Erw_{\wedge}(q,q')\text{ or }\Erw_{\wedge}^{*}(q,q')\}.}
+\end{equation}
+\TODO{State the formal AND-tree $\Erw_{\wedge}$ and $\Erw_{\wedge}^{*}$ rules from Lecture 09. Explain why AND-trees use $\yes$ and $\und$ rather than an explicit $\no$ node status, and how contraction/backtracking handles failed divisions.}
+
+\subsection{Search process: $P_{\wedge}=(A_{\wedge},\Env_{\wedge},K_{\wedge})$}
+We propose MRV for selecting the next component and branch-and-bound for choosing/pruning divisions. The environment records the best complete timetable found so far, $a_{\Best}$, and its score
+\begin{equation}
+  \boxed{B=\Eval(a_{\Best}).}
+\end{equation}
+The valid timetable returned by OR-tree (or improved by set-based search) provides the initial incumbent $a_{\Best}$.
+For a partial timetable $a$, let $\LB(a,U)$ be a sound lower bound on the penalty of \emph{every complete valid extension} of $a$. Then
+\begin{equation}
+\boxed{\LB(a,U)\ge B\quad\Longrightarrow\quad\text{prune this division}.}
+\end{equation}
+The lower bound must satisfy
+\begin{equation}
+  \boxed{\LB(a,U)\le\Eval(\widehat a)}
+\end{equation}
+for every feasible completion $\widehat a$ of $a$.
+\TODO{Define a concrete admissible lower bound. A safe initial bound is the sum of nonnegative preference and pair/section penalties already made unavoidable by assigned components; omit uncertain minimum-occupancy penalties. Explain how $f_{leaf}$ and $f_{trans}$ select a leaf and a division.}
+
+\subsection{Search instance: $\Inst_{\wedge}=(q_0,G_{\wedge})$}
+Begin the AND-tree optimization from the original problem, but pass the best known complete timetable as a bound:
+\begin{equation}
+\boxed{q_0=(\Schedule(\varnothing,X),\und).}
+\end{equation}
+\TODO{Define $G_{\wedge}$ using Lecture 09: root solved, all subproblems solved compatibly, or every applicable division/backtracking option exhausted. Specify separately what certifies optimality: all better candidates have been examined or soundly pruned.}
+
+\subsection{Algorithm 3: AND-tree branch-and-bound}
+\begin{algorithm}[H]
+\caption{AND-Tree Optimization (control implementing $\Div$)}
+\begin{algorithmic}[1]
+\Require Original CSP, a complete valid incumbent $a_{\Best}$
+\Ensure Best valid schedule found; optimal if exhaustive
+\State $B\gets\Eval(a_{\Best})$
+\Procedure{Optimize}{$a,U$}
+  \If{$\LB(a,U)\ge B$}
+    \State \Return \Comment{Soundly pruned division}
+  \EndIf
+  \If{$U=\varnothing$}
+    \If{$\Const(a)$ \textbf{and} $\Eval(a)<B$}
+      \State $a_{\Best}\gets a$; $B\gets\Eval(a)$
+    \EndIf
+    \State \Return
+  \EndIf
+  \State $x\gets\arg\min_{y\in U}|D_a(y)|$ \Comment{MRV}
+  \ForAll{$s\in D(x)$}
+    \State Consider division $\Div(\Schedule(a,U),$
+    \Statex \hspace{23mm}$\Verify(a,x,s),\Schedule(a\cup\{x\mapsto s\},U\setminus\{x\}))$
+    \If{$\Consistent(a\cup\{x\mapsto s\})$} \Comment{Verify child}
+      \State \Call{Optimize}{$a\cup\{x\mapsto s\},U\setminus\{x\}$} \Comment{Remaining child}
+    \EndIf
+    \State \Comment{If needed, try alternate $\Div$ (AND-tree backtracking)}
+  \EndFor
+\EndProcedure
+\State \Call{Optimize}{$\varnothing,X$}
+\State \Return $a_{\Best}$ and completion/optimality status
+\end{algorithmic}
+\end{algorithm}
+This is operational pseudocode for the branch-and-bound control. The formal model remains an AND-tree with $\Div$ and $\Erw_{\wedge}^{*}$; the recursive procedure implements selecting divisions and exploring them. It is not an OR-tree $\Altern$ relation.
+
+\subsection{Worked AND-tree derivation}
+\TODO{Using the same small timetable instance, show at least two possible $\Div$ choices for LEC 02: MWF 9--10 and MWF 10--11. Expand one AND division into its Verify and Schedule children. Show how the incumbent penalty is updated or how a division is pruned. If the starting incumbent has score zero and penalties are nonnegative, explain why that already certifies global optimality.}

@@ -1,0 +1,14 @@
+\section{Overall Search Architecture}
+\subsection{How the models relate}
+Our optional combined pipeline is
+\begin{equation}
+\boxed{\begin{gathered}
+\text{OR-tree}\ \longrightarrow\ a_{\mathrm{feasible}}\\[-1pt]
+\downarrow\\[-1pt]
+\text{Set-based improvement}\ \longrightarrow\ a_{\mathrm{best}}\\[-1pt]
+\downarrow\\[-1pt]
+\text{AND-tree branch-and-bound, initialized with }a_{\mathrm{best}}.
+\end{gathered}}
+\end{equation}
+The AND-tree explores the \emph{original scheduling choices}, not merely the local neighbors visited by set-based search. It can establish optimality only if its search completes with sound pruning.
+\TODO{Discuss the option to run OR-tree + Set-based without exact AND-tree optimization, or OR-tree + AND-tree directly. Distinguish the three paradigms in their own right.}
