@@ -1,14 +1,45 @@
+\ifdefined\savedparindent\else\newlength{\savedparindent}\fi
+\ifdefined\savedparskip\else\newlength{\savedparskip}\fi
+\setlength{\savedparindent}{\parindent}
+\setlength{\savedparskip}{\parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6\baselineskip plus 2pt}
+
 \section{Overall Search Architecture}
+\label{sec:architecture}
+
 \subsection{How the models relate}
-Our optional combined pipeline is
+\label{sec:relate}
+
+We propose two complete search systems that share the same first stage:
+\begin{itemize}
+  \item \textbf{Proposal A:} OR-tree for an initial valid timetable (Section~4) $\rightarrow$ set-based improvement (Section~5).
+  \item \textbf{Proposal B:} OR-tree for an initial valid timetable (Section~4) $\rightarrow$ AND-tree optimization (Section~6).
+\end{itemize}
 \begin{equation}
-\boxed{\begin{gathered}
-\text{OR-tree}\ \longrightarrow\ a_{\mathrm{feasible}}\\[-1pt]
-\downarrow\\[-1pt]
-\text{Set-based improvement}\ \longrightarrow\ a_{\mathrm{best}}\\[-1pt]
-\downarrow\\[-1pt]
-\text{AND-tree branch-and-bound, initialized with }a_{\mathrm{best}}.
-\end{gathered}}
+\boxed{
+\begin{array}{ccc}
+ & \text{OR-tree (Model I)} \ \longrightarrow\ \mathit{assign}_0 & \\[2pt]
+ \swarrow & & \searrow\\[2pt]
+ \text{Set-based (Model II)} & & \text{AND-tree (Model III)}\\
+ \downarrow & & \downarrow\\
+ \mathit{assign}_A & & \mathit{assign}_B\\[2pt]
+ \text{Proposal A} & & \text{Proposal B}
+\end{array}}
+\label{eq:proposals}
 \end{equation}
-The AND-tree explores the \emph{original scheduling choices}, not merely the local neighbors visited by set-based search. It can establish optimality only if its search completes with sound pruning.
-\TODO{Discuss the option to run OR-tree + Set-based without exact AND-tree optimization, or OR-tree + AND-tree directly. Distinguish the three paradigms in their own right.}
+
+All three models use the problem definition of Section~\ref{sec:problem}: the components $X$, the domains $D(x)$, the overlap test \eqref{eq:overlap}, the checker $\mathrm{Consistent}$ \eqref{eq:consistent} and $\mathrm{Eval}$.
+
+\textbf{Shared first stage:} Both second stages need a valid timetable to start from. The OR-tree (Section~4) finds one, $\mathit{assign}_0$, or reports that no valid timetable exists. It only looks for feasibility and ignores $\mathrm{Eval}$.
+
+\textbf{How the stages connect:} Both second stages begin with $\mathit{assign}_0$ as their best timetable and only replace it with a strictly better valid one, so
+\[
+\mathrm{Eval}(\mathit{assign}_A) \le \mathrm{Eval}(\mathit{assign}_0)
+\quad\text{and}\quad
+\mathrm{Eval}(\mathit{assign}_B) \le \mathrm{Eval}(\mathit{assign}_0).
+\]
+
+% restore the document defaults
+\setlength{\parindent}{\savedparindent}
+\setlength{\parskip}{\savedparskip}
