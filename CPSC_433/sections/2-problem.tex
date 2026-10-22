@@ -11,7 +11,7 @@ We use the terminology and symbols of the problem description~[2] throughout. Sy
 
 \subsection{Components, slots, and domains}
 \label{sec:components}
-\textbf{Components:} $\mathit{Lectures}$ is the set of lecture sections and $\mathit{Tutorials}$ the set of tutorials and labs; labs (\texttt{LAB}) are treated exactly like tutorials (\texttt{TUT}). We write $X = \mathit{Lectures} + \mathit{Tutorials}$ for the set of all components to schedule. Each lecture is named \textit{program, course number, section}, for example \texttt{CPSC 433 LEC 01}. For $x \in X$ we write $\mathit{course}(x)$ for the pair (program, number), e.g.\ (\texttt{CPSC}, 433).
+\textbf{Components:} $\mathit{Lectures}$ is the set of lecture sections and $\mathit{Tutorials}$ the set of tutorials and labs; labs (\texttt{LAB}) are treated exactly like tutorials (\texttt{TUT}). The set of all components to schedule is $X = \mathit{Lectures} + \mathit{Tutorials}$. Each lecture is named \textit{program, course number, section}, for example \texttt{CPSC 433 LEC 01}. For $x \in X$, $\mathit{course}(x)$ is the pair (program, number), e.g.\ (\texttt{CPSC}, 433).
 
 \textbf{Which lectures a tutorial belongs to:} A tutorial must not clash with its lecture. The tutorial's name tells us which lecture that is, and there are two naming forms:
 \begin{itemize}
@@ -19,7 +19,7 @@ We use the terminology and symbols of the problem description~[2] throughout. Sy
   \item \texttt{CPSC 433 TUT 01} names no section. It is a shared tutorial, open to students of every section, so it belongs to all lectures of \texttt{CPSC 433}.
 \end{itemize}
 
-We write $\mathit{Lec}(t)$ for the set of lectures tutorial $t$ belongs to:
+The set of lectures that tutorial $t$ belongs to is
 \begin{equation}
 \mathit{Lec}(t) =
 \begin{cases}
@@ -64,7 +64,7 @@ Tutorials & F $h$   & Fri only      & 2 h   & 8:00, 10:00, \ldots, 18:00 & 6 \\
 \end{tabular}
 \end{table}
 
-A given input offers only some of these slots, each with its capacities. $\mathit{Slots}$ is the set of offered slots. We write $\mathit{Slots}_L$ for the offered lecture slots (top half of Table~\ref{tab:slots}) and $\mathit{Slots}_T$ for the offered tutorial slots (bottom half), so $\mathit{Slots} = \mathit{Slots}_L + \mathit{Slots}_T$. Lectures may only use $\mathit{Slots}_L$ and tutorials only $\mathit{Slots}_T$.
+A given input offers only some of these slots, each with its capacities. $\mathit{Slots}$ is the set of offered slots. The offered lecture slots (top half of Table~\ref{tab:slots}) form $\mathit{Slots}_L$ and the offered tutorial slots (bottom half) form $\mathit{Slots}_T$, so $\mathit{Slots} = \mathit{Slots}_L + \mathit{Slots}_T$. Lectures may only use $\mathit{Slots}_L$ and tutorials only $\mathit{Slots}_T$.
 
 \textbf{Time overlap:} Since lecture and tutorial slots follow different grids, we compare actual meeting times. Two slots $s$ and $s'$ \emph{overlap} when they meet on a common day and their time ranges intersect:
 \begin{equation}
@@ -114,7 +114,7 @@ Hard constraints are the rules a valid timetable cannot break. Besides the sets 
   \item the $\mathit{activelearning}(x)$ statements.
 \end{itemize}
 
-We write $\mathit{ALmax}(s)$ for $\mathit{ALlecturemax}(s)$ if $s \in \mathit{Slots}_L$ and $\mathit{ALtutorialmax}(s)$ if $s \in \mathit{Slots}_T$. Each constraint only looks at components that have been placed, so it can also be checked on a partial assignment.
+Here $\mathit{ALmax}(s)$ means $\mathit{ALlecturemax}(s)$ if $s \in \mathit{Slots}_L$ and $\mathit{ALtutorialmax}(s)$ if $s \in \mathit{Slots}_T$. Each constraint only looks at components that have been placed, so it can also be checked on a partial assignment.
 \begin{align}
 C_1 &:\ \forall s \in \mathit{Slots}_L:\ n_L(s) \le \mathit{lecturemax}(s) && \text{(lecture capacity)}\\
 C_2 &:\ \forall s \in \mathit{Slots}_T:\ n_T(s) \le \mathit{tutorialmax}(s) && \text{(tutorial capacity)}\\
@@ -133,7 +133,7 @@ C_{13} &:\ \text{special CPSC 851/913 bookings (below)} && \notag
 
 $X_9$ is the set of \texttt{LEC 9} sections and their tutorials (e.g.\ \texttt{CPSC 433 LEC 90 TUT 01}), and $L_5$ is the set of 5XX lectures across all programs. The problem description writes $C_6$ as $\mathit{assign}(l) \neq \mathit{assign}(t)$; since lecture and tutorial slots are never equal, we read it as ``must not overlap''.
 
-\textbf{Special bookings ($C_{13}$):} If the input has a CPSC 351 lecture, then for every CPSC 851 component $t$ we set $\mathit{partassign}(t) = \mathrm{TT}\ 18{:}00$ and add $\mathit{notcompatible}(t, y)$ for every CPSC 351 lecture and tutorial $y$. If the input lists no CPSC 851 component, we add \texttt{CPSC 851 TUT 01}. CPSC 913 is handled the same way with CPSC 413. $C_{13}$ is then checked by $C_7$ and $C_8$. We assume these bookings use rooms reserved for them: they are not counted in $n_T(s)$ or $n_{T,\mathit{AL}}(s)$, so they never use up $\mathit{tutorialmax}(\mathrm{TT}\ 18{:}00)$. If the input does not offer TT 18:00 as a tutorial slot, we add it to $\mathit{Slots}_T$ with $\mathit{tutorialmax}$, $\mathit{ALtutorialmax}$ and $\mathit{tutorialmin}$ all 0, so only these bookings can use it.
+\textbf{Special bookings ($C_{13}$):} CPSC 851 and CPSC 913 never appear in the input; we create them. If the input has a CPSC 351 lecture, we add the tutorial $t_{851} = \texttt{CPSC 851 TUT 01}$ to $\mathit{Tutorials}$, set $\mathit{partassign}(t_{851}) = \mathrm{TT}\ 18{:}00$, and add $\mathit{notcompatible}(t_{851}, y)$ for every CPSC 351 lecture and tutorial $y$. CPSC 913 is created the same way, as $t_{913}$, when the input has a CPSC 413 lecture. $C_{13}$ is then checked by $C_7$ and $C_8$. Like any other tutorial, these bookings count toward $\mathit{tutorialmax}(\mathrm{TT}\ 18{:}00)$, so if the input does not offer TT 18:00 with enough room for them, no valid timetable exists.
 
 \textbf{Validity:} A complete timetable $\mathit{assign}$ is valid if it breaks no hard constraint:
 \begin{equation}
@@ -155,7 +155,7 @@ Soft constraints may be broken, but each violation adds penalty points. They use
 \begin{itemize}
   \item minimums $\mathit{lecturemin}(s)$ for $s \in \mathit{Slots}_L$ and $\mathit{tutorialmin}(s)$ for $s \in \mathit{Slots}_T$;
   \item $\mathit{preference} : (\mathit{Lectures} + \mathit{Tutorials}) \times \mathit{Slots} \to \mathbb{N}$ (0 where none is given);
-  \item the $\mathit{pair}(x,y)$ statements;
+  \item the $\mathit{pair}(x,y)$ statements, where $x$ and $y$ are either two lectures or two tutorials;
   \item penalties $\mathit{pen}_{\mathit{lecturemin}}$, $\mathit{pen}_{\mathit{tutorialmin}}$, $\mathit{pen}_{\mathit{notpaired}}$, $\mathit{pen}_{\mathit{section}} \in \mathbb{N}$.
 \end{itemize}
 
@@ -182,10 +182,10 @@ E_{\mathrm{pref}}(\mathit{assign}) = \sum_{x \in X} \ \sum_{s \in \mathit{Slots}
 \label{eq:epref}
 \end{equation}
 
-\textbf{Unmet pairs:} Each $\mathit{pair}(x,y)$ statement whose components are not at the same time (defined below) costs $\mathit{pen}_{\mathit{notpaired}}$.
+\textbf{Unmet pairs:} If the two components of a $\mathit{pair}(x,y)$ statement are not in the same slot, this costs $\mathit{pen}_{\mathit{notpaired}}$. The order does not matter: $\mathit{pair}(x,y)$ and $\mathit{pair}(y,x)$ count as one preference.
 \begin{equation}
 E_{\mathrm{pair}}(\mathit{assign}) = \mathit{pen}_{\mathit{notpaired}} \cdot
-  \bigl|\{\, \mathit{pair}(x,y) : \neg\,\mathit{sameTime}(\mathit{assign}(x), \mathit{assign}(y)) \,\}\bigr|
+  \bigl|\{\, \{x,y\} : \mathit{pair}(x,y),\ \mathit{assign}(x) \neq \mathit{assign}(y) \,\}\bigr|
 \label{eq:epair}
 \end{equation}
 
@@ -198,19 +198,6 @@ E_{\mathrm{section}}(\mathit{assign}) &= \mathit{pen}_{\mathit{section}} \cdot
 \end{split}
 \label{eq:esection}
 \end{equation}
-
-\textbf{Same time:} For two lectures, or two tutorials, ``same time'' means the same slot. A lecture and a tutorial never share a slot, so we count them as at the same time if they share a day and start time:
-\begin{equation}
-\begin{aligned}
-&\text{same kind:} && \mathit{sameTime}(s,s') \iff s = s',\\
-&\text{lecture vs.\ tutorial:} && \mathit{sameTime}(s,s') \iff
-  \mathit{days}(s) \cap \mathit{days}(s') \neq \varnothing
-  \ \wedge\ \mathit{start}(s) = \mathit{start}(s').
-\end{aligned}
-\label{eq:sametime}
-\end{equation}
-
-For example, lecture MWF 8:00 and tutorial MW 8:00 are at the same time; lecture TT 9:30 and tutorial TT 9:00 are not.
 
 \textbf{Objective:} $\mathrm{Eval}$ is the total penalty,
 \begin{equation}
