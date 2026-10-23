@@ -88,30 +88,39 @@ The environment stores the instance, incumbent and bound, node certificates,
 traversal records, and fixed offering/slot orders for tie-breaking.
 
 \paragraph{Lower bound and pruning.}
-Let $A=\operatorname{dom}(a)$ and let $w(x,s)$ be the nonnegative preference
-penalty for not placing $x$ in preferred slot $s$ (zero if unspecified).
-Let $\mathcal P$ contain requested unordered same-type pairs, counting
-reversed duplicates once, and $\mathcal R$ contain unordered pairs of
-distinct lecture sections of the same department/course number.
-Using the specified pair and section penalties, define
-\begin{align*}
- \operatorname{LB}(a)={}&
- \sum_{x\in A}\sum_{s\in S}w(x,s)\mathbf{1}[a(x)\ne s]\\
- &+\operatorname{pen}_{\mathrm{notpaired}}
- \sum_{\substack{\{x,y\}\in\mathcal P\\x,y\in A}}
-          \mathbf{1}[a(x)\ne a(y)]\\
- &+\operatorname{pen}_{\mathrm{section}}
- \sum_{\substack{\{x,y\}\in\mathcal R\\x,y\in A}}
-          \mathbf{1}[a(x)=a(y)].
-\end{align*}
-Here $\mathbf{1}[Q]$ is 1 when $Q$ holds and 0 otherwise.
-These penalties persist in every completion.
-Minimum-occupancy penalties are omitted from the bound because further
-assignments may remove a shortfall, but remain in the full objective.
-Therefore $\operatorname{LB}(a)\leq\operatorname{Eval}(\widehat a)$ for every
-feasible completion $\widehat a\supseteq a$.
-Prune when $\operatorname{LB}(a)\geq B$, since only one optimal timetable
-is required.
+For a partial assignment $a$, count only penalties already fixed by its
+assigned offerings:
+\[
+ \operatorname{LB}(a)=C_{\mathrm{pref}}(a)
+       +p_{\mathrm{pair}}N_{\mathrm{pair}}(a)
+       +p_{\mathrm{section}}N_{\mathrm{section}}(a).
+\]
+Here $C_{\mathrm{pref}}(a)$ is the total penalty of preference requests
+already violated by assigned offerings.
+The count $N_{\mathrm{pair}}(a)$ is the number of requested unordered
+same-type pairs whose two offerings are already assigned to different
+slots; reversed duplicates count once.
+The count $N_{\mathrm{section}}(a)$ is the number of unordered pairs of
+distinct lecture sections of the same department/course number whose two
+offerings are already assigned to the same slot.
+The constants $p_{\mathrm{pair}}$ and $p_{\mathrm{section}}$ are the
+corresponding per-pair penalties. These constants and
+$C_{\mathrm{pref}}$ include any applicable objective weights and use the
+same counting conventions as $\operatorname{Eval}$; all contributions
+are nonnegative.
+
+Every completion $\widehat a\supseteq a$ preserves the assignments in $a$,
+so none of these counted penalties can disappear within this branch.
+Minimum-occupancy penalties are omitted because later assignments may
+remove a shortfall, but remain in the full objective. Consequently
+\[
+ \operatorname{LB}(a)\leq\operatorname{Eval}(\widehat a)
+ \quad\text{for every feasible completion }\widehat a\supseteq a.
+\]
+Since $B=\operatorname{Eval}(a_{\mathrm{best}})$ is the score of an existing
+complete feasible timetable, prune when $\operatorname{LB}(a)\geq B$:
+no completion can improve the incumbent. Equality may also be pruned
+because only one optimal timetable is required.
 
 \paragraph{Control.}
 The leaf selector $f_{\mathrm{leaf}}$ visits unresolved leaves depth-first,
@@ -164,7 +173,8 @@ The only additional active hard restriction is
 $\operatorname{noncompatible}(x,y)$, requiring $a(x)\ne a(y)$.
 There are no pairing requests, same-course section pairs, or other active
 restrictions. All three lectures prefer $s_1$, with penalties 4, 2, and 1,
-respectively; all other soft terms vanish:
+respectively; all other soft terms vanish. Writing $\mathbf{1}[Q]$
+for 1 when $Q$ holds and 0 otherwise,
 \[
  \operatorname{Eval}(a)=4\mathbf{1}[a(x)=s_2]
        +2\mathbf{1}[a(y)=s_2]+\mathbf{1}[a(z)=s_2].
