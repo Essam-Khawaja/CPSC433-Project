@@ -40,6 +40,8 @@ All three models use the problem definition of Section~\ref{sec:problem}: the co
 \mathrm{Eval}(\mathit{assign}_B) \le \mathrm{Eval}(\mathit{assign}_0).
 \]
 
+\textbf{Why these models:} We separate finding a valid timetable from improving it because the hard constraints are strict and many, while $\mathrm{Eval}$ only matters among timetables that are already valid. Finding a valid timetable is a constraint satisfaction problem, which an OR-tree handles directly: it places one component at a time, discards a branch as soon as $\mathrm{Consistent}$ fails, and either finds a valid timetable or shows that none exists. For the second stage we offer two options with different trade-offs. Set-based search (Proposal A) works only on complete valid timetables and changes them in small steps, so it always has a valid timetable to return, but it can stop at a local optimum. The AND-tree (Proposal B) searches all scheduling choices with branch-and-bound and can show that its result is optimal if it finishes, but on large inputs it may not finish in reasonable time. Both proposals use the same OR-tree first stage, so that part is built the same way whichever proposal is chosen.
+
 % restore the document defaults
 \setlength{\parindent}{\savedparindent}
 \setlength{\parskip}{\savedparskip}
