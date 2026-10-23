@@ -44,9 +44,9 @@ s = (\mathit{days}(s),\ \mathit{start}(s),\ \mathit{end}(s)),
 \end{equation}
 meaning ``meet on every day in $\mathit{days}(s)$, from $\mathit{start}(s)$ to $\mathit{end}(s)$.'' For example, the lecture slot used for a Monday 9:00 lecture is $(\{\mathrm{Mon},\mathrm{Wed},\mathrm{Fri}\},\ 9{:}00,\ 10{:}00)$. For short, we name a slot by its day pattern and start time, so this slot is written \emph{MWF 9:00}. The day patterns are written MWF (Mon/Wed/Fri), TT (Tue/Thu), MW (Mon/Wed) and F (Fri only).
 
-Lectures and tutorials use different day patterns; Table~\ref{tab:slots} lists every slot pattern.
+Lectures and tutorials use different slot patterns; Table~\ref{tab:slots} lists them all.
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{Slot patterns. Each row is one group of slots; $h$ is the start time.}
 \label{tab:slots}
@@ -126,12 +126,12 @@ C_7 &:\ \forall\, \mathit{notcompatible}(x,y):\ \neg\,\mathit{overlap}(\mathit{a
 C_8 &:\ \forall x \text{ with } \mathit{partassign}(x) \neq \$:\ \mathit{assign}(x) = \mathit{partassign}(x) && \text{(preassignment)}\\
 C_9 &:\ \forall\, \mathit{unwanted}(x,s):\ \mathit{assign}(x) \neq s && \text{(unwanted)}\\
 C_{10} &:\ \forall x \in X_9:\ \mathit{start}(\mathit{assign}(x)) \ge 18{:}00 && \text{(LEC 9 evening)}\\
-C_{11} &:\ \forall l \neq l' \in L_5:\ \mathit{assign}(l) \neq \mathit{assign}(l') && \text{(5XX non-overlap)}\\
+C_{11} &:\ \forall l, l' \in L_5 \text{ with } l \neq l':\ \mathit{assign}(l) \neq \mathit{assign}(l') && \text{(5XX non-overlap)}\\
 C_{12} &:\ \forall l \in \mathit{Lectures}:\ \mathit{assign}(l) \neq \mathrm{TT}\ 11{:}00 && \text{(TT 11:00 meeting)}\\
 C_{13} &:\ \text{special CPSC 851/913 bookings (below)} && \notag
 \end{align}
 
-$X_9$ is the set of \texttt{LEC 9} sections and their tutorials (e.g.\ \texttt{CPSC 433 LEC 90 TUT 01}), and $L_5$ is the set of 5XX lectures across all programs. The problem description writes $C_6$ as $\mathit{assign}(l) \neq \mathit{assign}(t)$; since lecture and tutorial slots are never equal, we read it as ``must not overlap''.
+$X_9$ is the set of components whose name has a \texttt{LEC} number starting with 9, such as \texttt{CPSC 433 LEC 90} and \texttt{CPSC 433 LEC 90 TUT 01}; a shared tutorial such as \texttt{CPSC 433 TUT 01} has no \texttt{LEC} number and is not in $X_9$. $L_5$ is the set of 5XX lectures across all programs; because two lecture slots overlap only if they are equal \eqref{eq:overlap-eq}, $C_{11}$ keeps them from overlapping. The problem description writes $C_6$ as $\mathit{assign}(l) \neq \mathit{assign}(t)$; since lecture and tutorial slots are never equal, we read it as ``must not overlap''.
 
 \textbf{Special bookings ($C_{13}$):} CPSC 851 and CPSC 913 never appear in the input; we create them. If the input has a CPSC 351 lecture, we add the tutorial $t_{851} = \texttt{CPSC 851 TUT 01}$ to $\mathit{Tutorials}$, set $\mathit{partassign}(t_{851}) = \mathrm{TT}\ 18{:}00$, and add $\mathit{notcompatible}(t_{851}, y)$ for every CPSC 351 lecture and tutorial $y$. CPSC 913 is created the same way, as $t_{913}$, when the input has a CPSC 413 lecture. $C_{13}$ is then checked by $C_7$ and $C_8$. Like any other tutorial, these bookings count toward $\mathit{tutorialmax}(\mathrm{TT}\ 18{:}00)$, so if the input does not offer TT 18:00 with enough room for them, no valid timetable exists.
 
@@ -155,7 +155,7 @@ Soft constraints may be broken, but each violation adds penalty points. They use
 \begin{itemize}
   \item minimums $\mathit{lecturemin}(s)$ for $s \in \mathit{Slots}_L$ and $\mathit{tutorialmin}(s)$ for $s \in \mathit{Slots}_T$;
   \item $\mathit{preference} : (\mathit{Lectures} + \mathit{Tutorials}) \times \mathit{Slots} \to \mathbb{N}$ (0 where none is given);
-  \item the $\mathit{pair}(x,y)$ statements, where $x$ and $y$ are either two lectures or two tutorials;
+  \item the $\mathit{pair}(x,y)$ statements, with $x, y \in X$;
   \item penalties $\mathit{pen}_{\mathit{lecturemin}}$, $\mathit{pen}_{\mathit{tutorialmin}}$, $\mathit{pen}_{\mathit{notpaired}}$, $\mathit{pen}_{\mathit{section}} \in \mathbb{N}$.
 \end{itemize}
 
@@ -182,7 +182,7 @@ E_{\mathrm{pref}}(\mathit{assign}) = \sum_{x \in X} \ \sum_{s \in \mathit{Slots}
 \label{eq:epref}
 \end{equation}
 
-\textbf{Unmet pairs:} If the two components of a $\mathit{pair}(x,y)$ statement are not in the same slot, this costs $\mathit{pen}_{\mathit{notpaired}}$. The order does not matter: $\mathit{pair}(x,y)$ and $\mathit{pair}(y,x)$ count as one preference.
+\textbf{Unmet pairs:} If the two components of a $\mathit{pair}(x,y)$ statement are not in the same slot, this costs $\mathit{pen}_{\mathit{notpaired}}$. The instructor confirmed that inputs only pair two lectures or two tutorials, so ``same time'' in~[2] means the same slot. The order does not matter: $\mathit{pair}(x,y)$ and $\mathit{pair}(y,x)$ count as one preference.
 \begin{equation}
 E_{\mathrm{pair}}(\mathit{assign}) = \mathit{pen}_{\mathit{notpaired}} \cdot
   \bigl|\{\, \{x,y\} : \mathit{pair}(x,y),\ \mathit{assign}(x) \neq \mathit{assign}(y) \,\}\bigr|
