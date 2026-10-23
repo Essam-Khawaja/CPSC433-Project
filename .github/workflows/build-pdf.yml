@@ -1,0 +1,52 @@
+name: Build PDF
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to update the "latest" release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile main.tex
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: CPSC_433
+          root_file: main.tex
+
+      # Every commit (any branch / PR): downloadable from the run's summary page.
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proposal-${{ github.sha }}
+          path: CPSC_433/main.pdf
+
+  release:
+    # Only pushes to main refresh the permanent download link.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency: release-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: proposal-${{ github.sha }}
+
+      - name: Replace "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mv main.pdf proposal.pdf
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest proposal.pdf \
+            --target "${{ github.sha }}" \
+            --title "Latest proposal PDF" \
+            --notes "Built from ${{ github.sha }}" \
+            --prerelease
