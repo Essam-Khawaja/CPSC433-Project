@@ -1,0 +1,690 @@
+% ==================================================
+% MODEL II: SET-BASED LOCAL OPTIMIZATION
+% ==================================================
+
+\section{Model II: Set-Based Local Optimization}
+
+Now, we need a second model that will use the valid timetable produced by the OR-tree, and produce an output minimizing the soft penalties applied due to the soft constraints we have in the problem.
+
+Our best case scenario would be choosing a solution that has a zero penalty, otherwise we would like the schedule that has the least penalties.
+
+Set-based search works in this case because it allows for small improvements on the solution pass by pass.
+
+% ==================================================
+\subsection{Search model: $A_{set}=(S_{set},T_{set})$}
+% ==================================================
+
+Our search model is:
+
+\begin{equation}
+    A_{set}=(S_{set},T_{set})
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $A_{set}$ is our set-based search model.
+    \item $S_{set}$ is the state space for the search.
+    \item $T_{set}\subseteq S_{set}\times S_{set}$ defines the transitions between states.
+\end{itemize}
+
+In order to define the states and transitions, we first need to establish the facts that make up our timetables, along with the rules that allow us to modify them.
+
+\paragraph{Facts.}
+
+Following Lecture 06, we define our set of facts as:
+
+\begin{equation}
+    F=\{\Assigned(x,s)\mid x\in X,\ s\in D(x)\}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $F$ is the universe of all possible assignment facts.
+    \item $\Assigned(x,s)$ means that component $x$ is assigned to time slot $s$.
+    \item $X$ is the set of all components, including lectures and tutorials.
+    \item $D(x)$ is the set of allowed time slots for component $x$.
+\end{itemize}
+
+Each fact is simply one assignment in our timetable. For example, $\Assigned(L_1,s_9)$ would mean that lecture $L_1$ has been scheduled into slot $s_9$.
+
+By combining these facts, we can represent an entire timetable as a single set.
+
+\paragraph{States.}
+
+Lecture 06 defines the state space as a subset of the power set of facts:
+
+\begin{equation}
+    S_{set}\subseteq 2^F
+\end{equation}
+
+For our problem, we only want to consider states that represent complete, valid timetables. Therefore, we define:
+
+\begin{equation}
+    S_{set}=
+    \left\{
+    q\subseteq F\ \middle|\
+    \begin{array}{l}
+    q\text{ assigns every }x\in X\text{ exactly once,}\\
+    \Const(a_q)=\mathrm{true}
+    \end{array}
+    \right\}
+\end{equation}
+
+Here, $q$ represents a set of assignment facts, while $a_q$ is the actual timetable represented by those facts.
+
+In other words, every state in our search is already a valid solution to the constraint satisfaction problem. We are not trying to schedule more components at this stage, but rather trying to improve the assignments that have already been made.
+
+This also means that we do not need to generate every possible valid timetable beforehand. We only maintain one current timetable and generate new states as the search progresses.
+
+\paragraph{Extensions.}
+
+Now that we have our states, we need a way to move between them.
+
+Lecture 06 defines extension rules as:
+
+\begin{equation}
+    \EXT\subseteq
+    \{A\longrightarrow B\mid A,B\subseteq F\}
+\end{equation}
+
+Here, $A$ is a set of facts that we want to remove, and $B$ contains the facts that will replace them.
+
+For our model, we propose two types of extensions: Move and Swap.
+
+\textbf{1. Move}
+
+A Move extension changes the time slot assigned to a single component.
+
+\begin{equation}
+    \{\Assigned(x,s_1)\}
+    \longrightarrow
+    \{\Assigned(x,s_2)\}
+\end{equation}
+
+Here, $x$ is the component being moved, $s_1$ is its current time slot, and $s_2$ is the new time slot.
+
+For example, we could move CPSC 231 LEC 02 from MWF 9--10 to MWF 10--11, provided that doing so does not violate any hard constraints.
+
+\textbf{2. Swap}
+
+A Swap extension exchanges the assigned slots of two components.
+
+\begin{equation}
+    \begin{aligned}
+    &\{\Assigned(x,s_1),\Assigned(y,s_2)\}\\
+    &\qquad\longrightarrow
+    \{\Assigned(x,s_2),\Assigned(y,s_1)\}
+    \end{aligned}
+\end{equation}
+
+Here, $x$ and $y$ are two distinct components, while $s_1$ and $s_2$ are their current slots.
+
+We use swaps because sometimes moving one component on its own may not be possible, but exchanging the slots of two components could still produce a better timetable.
+
+For both extensions, we need to ensure that the new assignments belong to the components' allowed domains, respect preassignments, and do not violate any hard constraints.
+
+This is important because we do not want our optimization process to undo the work already done by the OR-tree.
+
+\paragraph{Transitions.}
+
+Once we select an extension rule, we can apply it to the current state using the transition defined in Lecture 06:
+
+\begin{equation}
+    q'=(q\setminus A)\cup B
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $q$ is our current state.
+    \item $A$ contains the facts we are removing.
+    \item $B$ contains the replacement facts.
+    \item $q'$ is the resulting state.
+\end{itemize}
+
+Our transition relation is therefore:
+
+\begin{equation}
+    \begin{aligned}
+    T_{set}=\{(q,q')\mid\;&
+    \exists(A\rightarrow B)\in\EXT,\\
+    &A\subseteq q,\\
+    &q'=(q\setminus A)\cup B,\\
+    &q'\in S_{set}\}
+    \end{aligned}
+\end{equation}
+
+The last condition, $q'\in S_{set}$, is particularly important. It ensures that every transition leads to another valid timetable.
+
+Therefore, our set-based search only moves between solutions that satisfy the hard constraints.
+
+% ==================================================
+\subsection{Search process: $P_{set}=(A_{set},\Env_{set},K_{set})$}
+% ==================================================
+
+Now that we have defined which transitions are possible, we need to decide which transitions should actually be performed.
+
+Following Lecture 06, our search process is:
+
+\begin{equation}
+    P_{set}=(A_{set},\Env_{set},K_{set})
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $A_{set}$ is our search model.
+    \item $\Env_{set}$ contains the information required by the search.
+    \item $K_{set}$ is the search control that decides which extension to apply.
+\end{itemize}
+
+\paragraph{Environment.}
+
+Our environment contains the information needed to check and evaluate our timetables. This includes the allowed slot domains, hard constraints, preferences, and the penalty values for each soft constraint.
+
+The current state $q$ is maintained by the search process and is available when evaluating possible extensions.
+
+\paragraph{Search control.}
+
+For our control, we propose a greedy hill-climbing approach.
+
+The idea is fairly simple. At every step, we consider the available Move and Swap extensions, calculate the resulting penalties, and choose the extension that gives us the lowest evaluation score.
+
+However, we only apply an extension if it actually improves the current timetable.
+
+\textbf{Weight function}
+
+Lecture 06 uses $f_{weight}$ to assign a numerical value to each applicable extension rule.
+
+For our problem, we define:
+
+\begin{equation}
+    f_{weight}(A,B,e)=
+    \Eval\left(a_{(q\setminus A)\cup B}\right)
+\end{equation}
+
+Here, $e$ provides the evaluation information needed to calculate the result of the proposed extension, while $q$ is the current search state.
+
+The function essentially asks: if we perform this Move or Swap, what will the new timetable's penalty be?
+
+Since our objective is to minimize penalties, a lower weight is preferable.
+
+\textbf{Applicable extensions}
+
+We define the set of currently applicable extensions as:
+
+\begin{equation}
+    \begin{aligned}
+    R(q)=\{(A,B)\mid\;&
+    A\rightarrow B\in\EXT,\\
+    &A\subseteq q,\\
+    &(q\setminus A)\cup B\in S_{set},\\
+    &(q\setminus A)\cup B\neq q\}
+    \end{aligned}
+\end{equation}
+
+Here, $R(q)$ contains all Move and Swap extensions that can be applied to our current state while still producing a different valid timetable.
+
+If $R(q)$ is nonempty, we find the minimum weight:
+
+\begin{equation}
+    w_{\min}(q)=
+    \min_{(A,B)\in R(q)}
+    f_{weight}(A,B,e)
+\end{equation}
+
+This gives us the lowest penalty achievable through one extension from the current state.
+
+\textbf{Selection function}
+
+It is possible that multiple extensions produce the same minimum weight.
+
+In that case, we use the function $f_{select}$ from Lecture 06 to break the tie.
+
+First, we collect the best extensions:
+
+\begin{equation}
+    R_{\min}(q)=
+    \{(A,B)\in R(q)\mid
+    f_{weight}(A,B,e)=w_{\min}(q)\}
+\end{equation}
+
+We then select one:
+
+\begin{equation}
+    (A^*,B^*)=
+    f_{select}(R_{\min}(q),e)
+\end{equation}
+
+Our proposed tie-breaker simply chooses randomly among the equally weighted extensions.
+
+This gives us one extension to consider applying.
+
+\textbf{Strict improvement}
+
+There is one additional condition we need.
+
+Suppose our current timetable has a penalty of 10, but the best available extension would increase it to 12. We obviously do not want to make that change.
+
+Therefore, we only perform the selected extension when:
+
+\begin{equation}
+    w_{\min}(q)<\Eval(a_q)
+\end{equation}
+
+If this condition holds, the next state becomes:
+
+\begin{equation}
+    K_{set}(q,e)=
+    (q\setminus A^*)\cup B^*
+\end{equation}
+
+Otherwise, we stop the search and return the current timetable.
+
+\paragraph{Neighborhood.}
+
+We can also describe the possible next states using the idea of a neighborhood.
+
+For a state $q$, define:
+
+\begin{equation}
+    N(q)=
+    \{q'\in S_{set}\mid
+    (q,q')\in T_{set},\ q'\neq q\}
+\end{equation}
+
+Here, $N(q)$ contains every valid timetable that can be reached from $q$ through one Move or Swap.
+
+Our hill-climbing control looks through this neighborhood and chooses the timetable with the lowest evaluation score, as long as it improves on the current one.
+
+Formally, an improvement exists when:
+
+\begin{equation}
+    \exists q'\in N(q):
+    \Eval(a_{q'})<\Eval(a_q)
+\end{equation}
+
+\paragraph{Local optimum.}
+
+One problem with this approach is that we might eventually reach a timetable where no single Move or Swap can improve the penalty.
+
+This is called a local optimum.
+
+Formally:
+
+\begin{equation}
+    \forall q'\in N(q),\quad
+    \Eval(a_{q'})\geq\Eval(a_q)
+\end{equation}
+
+However, this does not necessarily mean we have found the best timetable possible.
+
+There could still be a better solution somewhere else in the search space, but our current extension rules might not allow us to reach it through a single improvement.
+
+This is the main limitation of using a greedy approach for optimization.
+
+% ==================================================
+\subsection{Search instance: $\Inst_{set}=(q_0,G_{set})$}
+% ==================================================
+
+Following Lecture 06, a search instance is defined as:
+
+\begin{equation}
+    \Inst_{set}=(q_0,G_{set})
+\end{equation}
+
+where $q_0$ is the initial state and $G_{set}$ is our goal condition.
+
+\paragraph{Initial state.}
+
+Since the OR-tree has already produced a valid timetable, we do not need to start with an empty state.
+
+Let $a_{\mathrm{feasible}}$ represent the timetable returned by the OR-tree.
+
+We convert it into a set of assignment facts:
+
+\begin{equation}
+    q_0=
+    \{\Assigned(x,a_{\mathrm{feasible}}(x))
+    \mid x\in X\}
+\end{equation}
+
+This means that every component in the timetable becomes one fact in our initial set-based state.
+
+Since the OR-tree has already satisfied all hard constraints, we know that:
+
+\begin{equation}
+    \Const(a_{\mathrm{feasible}})=\mathrm{true}
+\end{equation}
+
+Therefore, $q_0\in S_{set}$, and we can begin optimizing immediately.
+
+\paragraph{Goal condition.}
+
+Our ideal situation is finding a timetable with an evaluation score of zero.
+
+Since penalties cannot be negative, a score of zero would be globally optimal.
+
+However, we also need to account for the possibility that no further improvement is available.
+
+Our goal condition is therefore:
+
+\begin{equation}
+    \begin{aligned}
+    G_{set}(q)=\yes
+    \iff\;&
+    \Eval(a_q)=0\\
+    &\lor
+    \neg\exists q'\in N(q):
+    \Eval(a_{q'})<\Eval(a_q)
+    \end{aligned}
+\end{equation}
+
+In other words, we stop when we either find a zero-penalty timetable or reach a local optimum.
+
+For larger instances, we could also introduce a time or iteration limit to ensure that the search finishes within a reasonable amount of time.
+
+% ==================================================
+\subsection{Algorithm 2: Set-based hill climbing}
+% ==================================================
+
+The following algorithm summarizes how our search process would work.
+
+We start with the OR-tree's valid timetable, generate all possible valid neighbors through Move and Swap extensions, and select the best improvement.
+
+\begin{algorithm}[H]
+\caption{Set-Based Optimization}
+\begin{algorithmic}[1]
+
+\Require Feasible timetable
+$a_{\mathrm{feasible}}$, $\EXT$, $\Eval$
+
+\Ensure Improved valid timetable
+
+\State $q\gets
+\{\Assigned(x,a_{\mathrm{feasible}}(x))
+\mid x\in X\}$
+
+\While{$\Eval(a_q)>0$}
+
+    \State $R\gets R(q)$
+
+    \If{$R=\varnothing$}
+        \State \Return $a_q$
+    \EndIf
+
+    \State $m\gets
+    \min_{(A,B)\in R}
+    f_{weight}(A,B,e)$
+
+    \If{$m\geq\Eval(a_q)$}
+        \State \Return $a_q$
+        \Comment{Local optimum}
+    \EndIf
+
+    \State $R_{\min}\gets
+    \{(A,B)\in R\mid
+    f_{weight}(A,B,e)=m\}$
+
+    \State $(A^*,B^*)\gets
+    f_{select}(R_{\min},e)$
+
+    \State $q\gets
+    (q\setminus A^*)\cup B^*$
+
+\EndWhile
+
+\State \Return $a_q$
+
+\end{algorithmic}
+\end{algorithm}
+
+The algorithm keeps improving the timetable for as long as it finds a valid extension that reduces the evaluation score.
+
+At every iteration, we generate the applicable extensions, calculate their penalties, and use our selection function to choose the best one.
+
+If no extension improves the score, we stop and return the current timetable.
+
+Since our states and extension rules are restricted to valid timetables, we also ensure that no hard constraints are violated during the optimization process.
+
+% ==================================================
+\subsection{Worked set-based derivation}
+% ==================================================
+
+To demonstrate how our search works, consider a simplified scheduling problem involving two lecture sections and two tutorials for CPSC 231.
+
+We define:
+
+\begin{align}
+L_1 &= \text{CPSC 231 LEC 01}\\
+L_2 &= \text{CPSC 231 LEC 02}\\
+T_1 &= \text{CPSC 231 TUT 01}\\
+T_2 &= \text{CPSC 231 TUT 02}
+\end{align}
+
+We also define the relevant weekly time slots:
+
+\begin{align}
+s_9 &= \text{MWF 9--10}\\
+s_{10} &= \text{MWF 10--11}\\
+s_{11} &= \text{MWF 11--12}\\
+r_{10} &= \text{TR 10--11}\\
+w_{11} &= \text{MW 11--12}
+\end{align}
+
+For this example, suppose the allowed domains are:
+
+\begin{align}
+D(L_1)&=\{s_9\}\\
+D(L_2)&=\{s_9,s_{10},s_{11}\}\\
+D(T_1)&=\{r_{10}\}\\
+D(T_2)&=\{w_{11}\}
+\end{align}
+
+We will assume that the lecture room capacity is two, the tutorial room capacity is one, and both tutorials are shared by both lecture sections.
+
+Therefore, tutorials cannot overlap either lecture.
+
+For our soft constraints, suppose we apply a penalty of 5 when both lecture sections occupy the same time slot. All other soft penalties are assumed to be zero for this example.
+
+Our evaluation function becomes:
+
+\begin{equation}
+    \Eval(a)=
+    5\cdot\mathbf{1}[a(L_1)=a(L_2)]
+\end{equation}
+
+where $\mathbf{1}[P]$ equals 1 when $P$ is true, and 0 otherwise.
+
+\paragraph{Initial timetable.}
+
+Suppose our OR-tree search returns the following timetable:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Component & Assigned Slot\\
+\hline
+CPSC 231 LEC 01 & MWF 9--10\\
+CPSC 231 LEC 02 & MWF 9--10\\
+CPSC 231 TUT 01 & TR 10--11\\
+CPSC 231 TUT 02 & MW 11--12\\
+\hline
+\end{tabular}
+\end{center}
+
+This timetable is valid because both lectures can share the slot under our assumed room capacity, and neither tutorial overlaps the lectures.
+
+However, both lecture sections are scheduled at the same time, giving us a penalty of 5.
+
+\begin{equation}
+    \Eval(a_{\mathrm{feasible}})=5
+\end{equation}
+
+\paragraph{Converting the timetable into facts.}
+
+Our initial set-based state is:
+
+\begin{equation}
+\begin{aligned}
+q_0=\{&
+\Assigned(L_1,s_9),\\
+&
+\Assigned(L_2,s_9),\\
+&
+\Assigned(T_1,r_{10}),\\
+&
+\Assigned(T_2,w_{11})
+\}
+\end{aligned}
+\end{equation}
+
+Since this is a valid timetable:
+
+\begin{equation}
+    q_0\in S_{set}
+\end{equation}
+
+And its evaluation score is:
+
+\begin{equation}
+    \Eval(a_{q_0})=5
+\end{equation}
+
+\paragraph{Finding an improvement.}
+
+Our search control now considers the possible Move and Swap extensions.
+
+One possible move is shifting $L_2$ from MWF 9--10 to MWF 10--11.
+
+For this extension:
+
+\begin{equation}
+    A=\{\Assigned(L_2,s_9)\}
+\end{equation}
+
+\begin{equation}
+    B=\{\Assigned(L_2,s_{10})\}
+\end{equation}
+
+Therefore:
+
+\begin{equation}
+    \{\Assigned(L_2,s_9)\}
+    \longrightarrow
+    \{\Assigned(L_2,s_{10})\}
+\end{equation}
+
+This extension is valid because the new slot belongs to $D(L_2)$ and does not overlap either tutorial.
+
+On the other hand, moving $L_2$ to MWF 11--12 would not be permitted, since that slot overlaps $T_2$ on Monday and Wednesday.
+
+\paragraph{Applying the extension.}
+
+Using the set-based transition rule:
+
+\begin{equation}
+    q_1=(q_0\setminus A)\cup B
+\end{equation}
+
+We obtain:
+
+\begin{equation}
+\begin{aligned}
+q_1=\{&
+\Assigned(L_1,s_9),\\
+&
+\Assigned(L_2,s_{10}),\\
+&
+\Assigned(T_1,r_{10}),\\
+&
+\Assigned(T_2,w_{11})
+\}
+\end{aligned}
+\end{equation}
+
+Our new timetable is:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Component & Assigned Slot\\
+\hline
+CPSC 231 LEC 01 & MWF 9--10\\
+CPSC 231 LEC 02 & MWF 10--11\\
+CPSC 231 TUT 01 & TR 10--11\\
+CPSC 231 TUT 02 & MW 11--12\\
+\hline
+\end{tabular}
+\end{center}
+
+This timetable still satisfies every hard constraint:
+
+\begin{equation}
+    \Const(a_{q_1})=\mathrm{true}
+\end{equation}
+
+However, the two lecture sections now occupy different time slots, meaning the soft penalty is removed.
+
+\begin{equation}
+    \Eval(a_{q_1})=0
+\end{equation}
+
+Comparing the two states:
+
+\begin{equation}
+    \Eval(a_{q_1})<
+    \Eval(a_{q_0})
+\end{equation}
+
+\begin{equation}
+    0<5
+\end{equation}
+
+Therefore, our hill-climbing control accepts this extension.
+
+\paragraph{Termination.}
+
+Since we have reached an evaluation score of zero, our goal condition is satisfied:
+
+\begin{equation}
+    G_{set}(q_1)=\yes
+\end{equation}
+
+The search terminates and returns the improved timetable.
+
+The complete derivation is:
+
+\begin{equation}
+    q_0
+    \xrightarrow{
+    \text{Move }L_2:s_9\rightarrow s_{10}
+    }
+    q_1
+\end{equation}
+
+With the evaluation score changing from:
+
+\begin{equation}
+    5\longrightarrow 0
+\end{equation}
+
+This example shows how the set-based search takes a valid timetable from the OR-tree, applies a small change, and produces a better solution without violating any hard constraints.
+
+% ==================================================
+\subsection{Justification and limitations}
+% ==================================================
+
+We chose set-based search because it fits naturally with the second stage of our scheduling problem.
+
+By the time this search begins, all components have already been assigned and the hard constraints are satisfied. Rather than rebuilding the timetable, we can focus on improving the assignments through smaller changes.
+
+Our Move and Swap extensions also give us a straightforward way to explore different schedules, while the weight function allows us to compare them using the evaluation function defined in the problem.
+
+However, the main limitation comes from our greedy search control.
+
+Hill climbing only accepts extensions that improve the current timetable. This means we may eventually reach a local optimum, even when a better timetable exists elsewhere.
+
+There is also the possibility that certain improvements require multiple components to move together. Since our current extensions only move one component or swap two, the search may not always be able to reach those solutions.
+
+We could address this later through more advanced controls, such as simulated annealing, or by introducing extension rules that modify several assignments at once.
+
+For our proposed model, however, greedy hill climbing gives us a relatively simple optimization process that follows the set-based search framework from Lecture 06 while keeping every intermediate timetable valid.

@@ -1,0 +1,64 @@
+name: Build PDF
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compile main.tex
+        uses: xu-cheng/latex-action@v4
+        with:
+          working_directory: CPSC_433
+          root_file: main.tex
+
+      - name: Rename PDF
+        run: mv CPSC_433/main.pdf CPSC_433/proposal.pdf
+
+      # Every commit (any branch / PR): a plain PDF (no zip) on the run's summary page.
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: CPSC_433/proposal.pdf
+          archive: false
+
+      # Pushes to main only: stage the PDF for GitHub Pages.
+      - name: Prepare Pages site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir site
+          cp CPSC_433/proposal.pdf site/
+          # Site root redirects straight to the PDF.
+          echo '<meta http-equiv="refresh" content="0; url=proposal.pdf">' > site/index.html
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}proposal.pdf
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

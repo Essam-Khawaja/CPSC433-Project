@@ -1,0 +1,554 @@
+% Main preamble requires: \usepackage{amsmath,amssymb}
+% Include in the document body with: \input{sections/6-and-tree}
+% This section includes its own uniquely named pseudocode definitions.
+% No document class, document wrapper, or extra algorithm package is needed.
+
+% Self-contained ruled, numbered pseudocode (no extra algorithm package).
+\newcounter{andoptalgorithm}
+\newcounter{andoptline}
+\newenvironment{andoptalgorithm}[1]{%
+  \par\medskip\noindent\begin{minipage}{\linewidth}
+  \refstepcounter{andoptalgorithm}\setcounter{andoptline}{0}
+  \hrule\smallskip
+  \textbf{Algorithm \theandoptalgorithm}\quad #1\par
+  \smallskip\hrule\smallskip\small
+}{\par\smallskip\hrule\end{minipage}\par\medskip}
+\newcommand{\andoptline}[2]{%
+  \par\noindent\refstepcounter{andoptline}%
+  \makebox[2em][r]{\scriptsize\theandoptline:}\hspace{0.6em}%
+  \hspace*{#1em}#2\strut}
+
+% All labels use the prefix andopt: to avoid collisions with other sections.
+% Sources: CPSC 433 Project Description, Version 1, pp. 1--2;
+% Project Problem Description, Version 1, pp. 3--9;
+% Lecture 09, And-Tree-based Search, especially pp. 2--3, 10--26, 33--34.
+% Instructor clarifications incorporated: pairs are same-type and unordered;
+% generated CPSC 851/913 tutorials consume ordinary tutorial capacity.
+
+\section{Solution 2: AND-Tree Optimization Following OR-Tree Feasibility}
+\label{andopt:section}
+
+\subsection{Purpose and connection to the feasibility stage}
+
+The second stage receives a complete feasible timetable from OR-tree search
+and seeks a timetable with minimum soft-constraint penalty. We use the
+optimization interpretation of AND-tree search from Lecture 09: divide an
+optimization problem into cases, account for every case, and combine their
+results by comparison. Branch-and-bound avoids exploring a case when a sound
+lower bound proves that it cannot improve the best timetable already found.
+
+The children of a division represent different possible assignments of one
+offering. Their timetables are compared, rather than combined into a single
+assignment. All child cases must nevertheless be accounted for before the
+parent's optimization task is resolved. This differs from the preceding
+OR-tree feasibility stage, which may stop after finding one valid completion.
+
+Let $a_{\mathrm{init}}$ be the timetable returned by the feasibility stage.
+The optimization stage initializes its incumbent and upper bound as
+\begin{equation}
+ a_{\mathrm{best}}=a_{\mathrm{init}},
+ \qquad B=\operatorname{Eval}(a_{\mathrm{best}}).
+ \label{andopt:incumbent}
+\end{equation}
+The incumbent is always complete and satisfies every hard constraint. Its
+assignments are not imposed on the optimization tree. Only assignments fixed
+by the input or required by the problem specification are fixed at the root.
+If the feasibility stage proves that no valid timetable exists, this stage
+is not invoked. If that stage stops without finding a timetable or proving
+infeasibility, its result is inconclusive and does not establish that the
+input is infeasible.
+
+\subsection{Scheduling notation and shared functions}
+
+Let $L$ be the set of lecture sections, $T$ the set of tutorials and labs,
+and $X=L\cup T$. Let $S$ be the set of typed abstract weekly slots and
+$D(x)\subseteq S$ the domain of offering $x$. A slot records its offering
+type, recurring days, and time interval. Actual time overlap is used for
+hard conflict checks, including when lecture and tutorial durations differ.
+
+An assignment $a$ is a partial function from $X$ to $S$, with
+$a(x)\in D(x)$ for each $x\in\operatorname{dom}(a)$. Define
+\begin{equation}
+ U(a)=X\setminus\operatorname{dom}(a).
+\end{equation}
+A complete assignment $\widehat a$ extends $a$, written $\widehat a\supseteq a$,
+when it agrees with every assignment already recorded in $a$.
+
+We use $\operatorname{Constr}(\widehat a)$ for the conjunction of all hard
+constraints in the official problem statement. We use
+$\operatorname{Consistent}(a)$ for a sound partial-assignment check:
+it rejects known violations without rejecting a partial assignment that has
+a feasible completion. Passing this check does not prove that a feasible
+completion exists. For complete assignments, the check agrees with
+$\operatorname{Constr}$. Both stages use the same domains, constraint
+interpretations, and full evaluation function.
+
+Let $a_{\mathrm{fix}}$ contain all mandatory assignments. Preprocessing
+creates the CPSC 851 tutorial when a CPSC 351 lecture is present and the
+CPSC 913 tutorial when a CPSC 413 lecture is present. Each required special
+tutorial is created once, is fixed to Tuesday/Thursday 18:00--19:00, and
+counts toward the ordinary tutorial capacity. The prescribed conflicts with
+its associated course are included in $\operatorname{Constr}$. These
+generated offerings are included in $T$ before either search begins.
+All partial assignments considered below extend $a_{\mathrm{fix}}$.
+
+For $x\in U(a)$, define its currently legal slots by
+\begin{equation}
+ D_a(x)=\{s\in D(x):
+ \operatorname{Consistent}(a\cup\{x\mapsto s\})\}.
+ \label{andopt:legal}
+\end{equation}
+The full objective $\operatorname{Eval}(\widehat a)$ is the sum of the
+specified minimum-lecture-usage, minimum-tutorial-usage, preference, pairing,
+and lecture-section penalties. Every term is nonnegative. A low objective
+value never compensates for a hard-constraint violation.
+
+\subsection{Search model}
+The model is $A_{\land}=(S_{\land},T_{\land})$.
+
+\paragraph{Problem descriptions.}
+Define
+\begin{equation}
+ \operatorname{Prob}_{\land}
+ =\{\operatorname{Opt}(a,U):
+       a\text{ is a partial assignment extending }a_{\mathrm{fix}},
+       U=U(a)\}.
+ \label{andopt:prob}
+\end{equation}
+The description $\operatorname{Opt}(a,U)$ asks us to account for all valid
+completions of $a$ when searching for a minimum-penalty timetable. Its
+underlying optimization value is
+\begin{align}
+ \mathcal F(a)&=\{\widehat a:X\to S:
+       \widehat a\supseteq a,
+       \operatorname{Constr}(\widehat a)=\mathsf{true}\},\\
+ V(a,U)&=\min_{\widehat a\in\mathcal F(a)}
+                  \operatorname{Eval}(\widehat a),
+ \qquad \min\varnothing=+\infty.
+ \label{andopt:value}
+\end{align}
+The value $+\infty$ denotes absence of a feasible completion. It is not an
+additional soft penalty. The bounded search need not compute the exact value
+of every subproblem: a certified lower bound can suffice to exclude a case
+from improving the global incumbent.
+
+\paragraph{Division relation.}
+For an unresolved problem $p=\operatorname{Opt}(a,U)$, choose $x\in U$.
+If $D_a(x)=\{s_1,\ldots,s_k\}$ with $k\geq1$, define
+\begin{align}
+ p_i&=\operatorname{Opt}(a\cup\{x\mapsto s_i\},U\setminus\{x\}),
+          &&1\leq i\leq k,\\
+ \operatorname{Div}(p,p_1,\ldots,p_k)&\quad\text{holds}.
+ \label{andopt:div}
+\end{align}
+Each choice of the offering $x$ gives a possible division. Once selected,
+that division contains every currently legal slot case for $x$. It does not
+select just one slot. These cases partition the feasible completions of the
+parent, so
+\begin{equation}
+ V(a,U)=\min_{1\leq i\leq k}
+ V(a\cup\{x\mapsto s_i\},U\setminus\{x\}).
+ \label{andopt:combine}
+\end{equation}
+The full partial assignment is retained in every child; shared capacities
+and conflicts between offerings are therefore preserved. No independence
+between departments or courses is assumed. If any unassigned offering has
+an empty legal domain, then $\mathcal F(a)=\varnothing$ and the case can be
+resolved without a division.
+
+\paragraph{Tree states and resolution certificates.}
+As in the lecture, states are whole AND-trees, $S_{\land}\subseteq Atree$.
+A leaf is $(p,\mathit{sol})$ and an internal node is
+$(p,\mathit{sol},b_1,\ldots,b_k)$, where
+$p\in\operatorname{Prob}_{\land}$ and
+$\mathit{sol}\in\{?,\mathsf{yes}\}$.
+The environment stores the incumbent and the certificates associated with
+tree nodes.
+
+For this optimization instantiation, $\mathsf{yes}$ means that the node's
+case is resolved for the global minimization task. It does not necessarily
+mean that the case contains a feasible timetable or that its exact optimum
+was computed. A resolved node $v$ with problem $\operatorname{Opt}(a,U)$
+has a retained certificate $\ell_v$ satisfying
+\begin{equation}
+ B\leq\ell_v\leq V(a,U).
+ \label{andopt:certificate}
+\end{equation}
+Thus no completion in that case improves the current incumbent. Certificates
+are obtained in the following ways:
+\begin{enumerate}
+ \item For a complete valid assignment, evaluate it and update the incumbent
+ if its penalty is smaller. Then take $\ell_v=\operatorname{Eval}(a)$.
+ \item For a case proved infeasible, take $\ell_v=+\infty$.
+ \item For a case pruned by a sound lower bound, take $\ell_v=\operatorname{LB}(a)$.
+ \item If every child of a division is resolved, take
+ $\ell_v=\min_i\ell_{v_i}$. Equation~\eqref{andopt:combine} makes this a
+ sound certificate for the parent.
+\end{enumerate}
+The incumbent value only decreases, so certificates remain valid after a
+later improvement. A pruned case is recorded as dominated, not incorrectly
+reported as infeasible or assigned an exact value of $+\infty$.
+
+\paragraph{Expansion and contraction.}
+We instantiate the lecture's extension operations as follows:
+\begin{align}
+ (p,?)&\longrightarrow(p,\mathsf{yes})
+       &&\text{when a certificate is available},\\
+ (p,?)&\longrightarrow(p,?,(p_1,?),\ldots,(p_k,?))
+       &&\text{when }\operatorname{Div}(p,p_1,\ldots,p_k).
+ \label{andopt:extension}
+\end{align}
+These local operations, and their application within an unchanged surrounding
+tree, define $\operatorname{Erw}_{\land}$. A solved leaf is not expanded again.
+For this section, $\operatorname{Erw}_{\land}^{*}$ denotes a finite sequence
+of such extensions, including the zero-step sequence. Reversing an extension
+sequence gives a structural contraction:
+\begin{equation}
+ T_{\land}=\{(q,q')\in S_{\land}\times S_{\land}:
+   \operatorname{Erw}_{\land}(q,q')
+   \ \text{or}\ 
+   \operatorname{Erw}_{\land}^{*}(q',q)\}.
+ \label{andopt:transitions}
+\end{equation}
+The argument order in the second relation expresses contraction. The control
+permits contraction of a resolved subtree only after retaining its aggregate
+certificate and any incumbent update. It may then mark the resulting leaf
+$\mathsf{yes}$. It never erases an unresolved case or repeats a completed
+division. Ordinary depth-first return proceeds to the next unresolved
+sibling. Infeasible children resolve to $+\infty$; they do not force the
+entire parent optimization problem to fail.
+
+\subsection{Search process}
+The process is $P_{\land}=(A_{\land},Env_{\land},K_{\land})$.
+
+\paragraph{Environment.}
+The environment contains the fixed scheduling instance, $D$, the shared
+constraint checker and objective, $a_{\mathrm{best}}$, $B$, node certificates,
+and traversal records. Fixed total orders on offerings and slots give
+deterministic tie-breaking. The environment also records whether processing
+finished normally or was interrupted by a specified resource limit.
+
+\paragraph{A sound lower bound.}
+Let $w(x,s)\geq0$ be the input preference value attached to offering $x$
+and preferred slot $s$, or zero if no such preference is supplied. Let
+$\mathcal P$ be the set of requested unordered offering pairs, with reversed
+duplicates counted once. By the instructor's clarification, each pair
+contains two lectures or two tutorials/labs. A pairing is satisfied exactly
+when their assigned slots are equal. Let $\mathcal R$ contain every unordered
+pair of distinct lecture sections with the same department and course number.
+
+Write $\mathbf{1}[Q]$ for 1 when proposition $Q$ is true and 0 otherwise,
+and put $A=\operatorname{dom}(a)$. Define
+\begin{align}
+ \operatorname{LB}(a)
+ ={}&\sum_{x\in A}\sum_{s\in S} w(x,s)\,
+                       \mathbf{1}[a(x)\ne s]\\
+ &+\operatorname{pen}_{\mathrm{notpaired}}
+      \sum_{\substack{\{x,y\}\in\mathcal P\\x,y\in A}}
+                       \mathbf{1}[a(x)\ne a(y)]\\
+ &+\operatorname{pen}_{\mathrm{section}}
+      \sum_{\substack{\{x,y\}\in\mathcal R\\x,y\in A}}
+                       \mathbf{1}[a(x)=a(y)].
+ \label{andopt:lb}
+\end{align}
+Here $\operatorname{pen}_{\mathrm{section}}$ denotes the specified penalty
+for two sections of the same course sharing a slot. All counted penalties
+are fixed by assignments already made and persist in every extension.
+Minimum-occupancy penalties are omitted because additional offerings may
+remove the current shortfall. They are still included when computing the
+full $\operatorname{Eval}$ of a complete timetable. Since the remaining
+objective contributions are nonnegative,
+\begin{equation}
+ \operatorname{LB}(a)\leq\operatorname{Eval}(\widehat a)
+ \quad\text{for every }\widehat a\in\mathcal F(a).
+ \label{andopt:lb-sound}
+\end{equation}
+Consequently the pruning condition is
+\begin{equation}
+ \operatorname{LB}(a)\geq B.
+ \label{andopt:prune}
+\end{equation}
+Equality is sufficient because the task is to return one minimum-penalty
+timetable, rather than enumerate all timetables tied for the minimum.
+
+\paragraph{Leaf selection: $f_{\mathrm{leaf}}$.}
+Select the next unresolved leaf in a depth-first traversal. When a division
+is first created, order its children by increasing
+$\operatorname{LB}(a\cup\{x\mapsto s\})$, breaking ties by the fixed slot
+order. Fully process the first child before continuing to its next sibling.
+This seeks a useful complete incumbent early while avoiding a global
+best-first frontier. Resolved leaves are excluded from selection.
+
+\paragraph{Transition selection: $f_{\mathrm{tran}}$.}
+For the selected leaf $\operatorname{Opt}(a,U)$, apply the first applicable
+rule in the following order:
+\begin{enumerate}
+ \item If $\operatorname{Consistent}(a)$ is false, resolve the case as
+ infeasible.
+ \item If $U=\varnothing$, check $\operatorname{Constr}(a)$. Evaluate and
+ possibly replace the incumbent if valid; otherwise resolve as infeasible.
+ \item If some $x\in U$ has $D_a(x)=\varnothing$, resolve as infeasible.
+ \item If $\operatorname{LB}(a)\geq B$, retain the lower-bound certificate
+ and resolve the case without expansion.
+ \item Otherwise select the division offering by minimum remaining values:
+ \begin{equation}
+ x^*=\arg\min_{x\in U}|D_a(x)|,
+ \label{andopt:mrv}
+ \end{equation}
+ breaking ties by the fixed offering order. Expand into all legal slot
+ cases for $x^*$ using~\eqref{andopt:div}.
+\end{enumerate}
+After a case is resolved, combine certificates upward whenever all children
+of a node have been resolved. No alternative division by another offering
+is required: the chosen division already covers every feasible completion.
+Together these rules define $K_{\land}$.
+
+\subsection{Search instance and termination}
+
+The search instance is $\operatorname{Inst}_{\land}=(q_0,G_{\land})$, where
+\begin{equation}
+ q_0=(\operatorname{Opt}(a_{\mathrm{fix}},
+                 X\setminus\operatorname{dom}(a_{\mathrm{fix}})),?).
+ \label{andopt:root}
+\end{equation}
+Initialize the environment by~\eqref{andopt:incumbent}. Define tree resolution
+recursively by
+\begin{align}
+ \operatorname{Resolved}((p,\mathsf{yes}))&=\mathsf{true},\\
+ \operatorname{Resolved}((p,?))&=\mathsf{false},\\
+ \operatorname{Resolved}((p,?,b_1,\ldots,b_k))
+     &=\bigwedge_{i=1}^{k}\operatorname{Resolved}(b_i).
+\end{align}
+Every $\mathsf{yes}$ marking must be supported by a retained certificate.
+For reachable states, the goal predicate is
+\begin{equation}
+ G_{\land}(q)=\operatorname{Resolved}(q).
+\end{equation}
+The comparison operation in~\eqref{andopt:combine} provides the required
+compatibility of child results: they concern an exhaustive partition of the
+parent's completion set. Their distinct timetable assignments need not
+coexist in a single schedule.
+
+When the root is resolved, return $a_{\mathrm{best}}$ as optimal. A zero
+incumbent permits immediate termination: all objective terms are
+nonnegative, so the root has the certificate $\ell_{\mathrm{root}}=0$.
+If a resource limit interrupts the search before resolution, return the
+incumbent as feasible, with optimality not established. Such interruption
+is an external stopping condition, not satisfaction of $G_{\land}$.
+
+\subsection{Operational procedure}
+
+The following recursive procedure implements the selected divisions and
+depth-first control. The incumbent is shared across recursive calls.
+The return value is a certificate, not necessarily the exact optimum of
+that subproblem. An interruption propagates immediately to the driver;
+unfinished parents receive no certificate.
+
+\begin{andoptalgorithm}{AND-Tree Branch-and-Bound: Recursive Search}
+\textbf{Require:} Partial assignment $a$, remaining offerings $U$;
+shared incumbent $a_{\mathrm{best}}$ and bound $B$.\\
+\textbf{Ensure:} Return a certificate, or propagate interruption.
+\andoptline{0}{\textbf{function} $\operatorname{OptimizeCase}(a,U)$}
+\andoptline{1}{\textbf{if} resource limit reached \textbf{then} interrupt}
+\andoptline{1}{\textbf{if} $\neg\operatorname{Consistent}(a)$ \textbf{then return} $\infty$}
+\andoptline{1}{\textbf{if} $U=\varnothing$ \textbf{then}}
+\andoptline{2}{\textbf{if} $\neg\operatorname{Constr}(a)$ \textbf{then return} $\infty$}
+\andoptline{2}{$v\gets\operatorname{Eval}(a)$}
+\andoptline{2}{\textbf{if} $v<B$ \textbf{then}}
+\andoptline{3}{$a_{\mathrm{best}}\gets\operatorname{copy}(a)$}
+\andoptline{3}{$B\gets v$}
+\andoptline{2}{\textbf{end if}}
+\andoptline{2}{\textbf{return} $v$}
+\andoptline{1}{\textbf{end if}}
+\andoptline{1}{Compute $D_a(x)$ for every $x\in U$}
+\andoptline{1}{\textbf{if} some $D_a(x)=\varnothing$ \textbf{then return} $\infty$}
+\andoptline{1}{$b\gets\operatorname{LB}(a)$}
+\andoptline{1}{\textbf{if} $b\ge B$ \textbf{then return} $b$}
+\andoptline{1}{$x\gets$ MRV offering, with fixed tie-breaking}
+\andoptline{1}{$L\gets D_a(x)$, ordered by child lower bound, then slot order}
+\andoptline{1}{$c\gets\infty$}
+\andoptline{1}{\textbf{for each} $s\in L$ \textbf{do}}
+\andoptline{2}{$a'\gets a\cup\{x\mapsto s\}$}
+\andoptline{2}{$c'\gets\operatorname{OptimizeCase}(a',U\setminus\{x\})$}
+\andoptline{2}{$c\gets\min(c,c')$}
+\andoptline{1}{\textbf{end for}}
+\andoptline{1}{\textbf{return} $c$}
+\andoptline{0}{\textbf{end function}}
+\end{andoptalgorithm}
+
+\begin{andoptalgorithm}{AND-Tree Optimization: Driver}
+\textbf{Require:} Instance $I$ and complete timetable $a_{\mathrm{init}}$
+with $\operatorname{Constr}(a_{\mathrm{init}})=\mathsf{true}$.\\
+\textbf{Ensure:} Return the best feasible timetable found and its optimality status.
+\andoptline{0}{\textbf{function} $\operatorname{Driver}(I,a_{\mathrm{init}})$}
+\andoptline{1}{$a_{\mathrm{best}}\gets\operatorname{copy}(a_{\mathrm{init}})$}
+\andoptline{1}{$B\gets\operatorname{Eval}(a_{\mathrm{best}})$}
+\andoptline{1}{\textbf{if} $B=0$ \textbf{then return} $(a_{\mathrm{best}},\mathsf{OPTIMAL})$}
+\andoptline{1}{\textbf{try}}
+\andoptline{2}{$\operatorname{OptimizeCase}(a_{\mathrm{fix}},X\setminus\operatorname{dom}(a_{\mathrm{fix}}))$}
+\andoptline{2}{\textbf{return} $(a_{\mathrm{best}},\mathsf{OPTIMAL})$}
+\andoptline{1}{\textbf{on interruption}}
+\andoptline{2}{\textbf{return} $(a_{\mathrm{best}},\mathsf{FEASIBLE\_OPTIMALITY\_NOT\_ESTABLISHED})$}
+\andoptline{1}{\textbf{end try}}
+\andoptline{0}{\textbf{end function}}
+\end{andoptalgorithm}
+
+\subsection{Correctness and limitations}
+
+\paragraph{Feasibility and preservation of the incumbent.}
+The initial incumbent is feasible by the first stage's contract. It is
+replaced only by a complete assignment passing $\operatorname{Constr}$.
+Therefore every returned timetable is feasible and its penalty is no larger
+than that of $a_{\mathrm{init}}$.
+
+\paragraph{Coverage, pruning, and optimality.}
+For any selected offering, every feasible completion belongs to exactly one
+child slot case. Sound partial consistency checking never removes a feasible
+completion. Equation~\eqref{andopt:lb-sound} justifies every bound-based
+pruning decision. Terminal and combined certificates satisfy
+\eqref{andopt:certificate}; decreases in $B$ preserve previously obtained
+certificates. When the root is resolved,
+\begin{equation}
+ B\leq\ell_{\mathrm{root}}
+   \leq V(a_{\mathrm{fix}},U(a_{\mathrm{fix}}))\leq B.
+\end{equation}
+The final inequality holds because the incumbent is itself a feasible
+completion of $a_{\mathrm{fix}}$. Hence $B$ equals the global minimum.
+
+\paragraph{Termination and cost.}
+Every division assigns one previously unassigned offering, so branch depth
+is at most $|X\setminus\operatorname{dom}(a_{\mathrm{fix}})|$. Domains are
+finite, and the control never revisits a resolved case. Without interruption,
+the search therefore terminates. Branch-and-bound can reduce exploration,
+but worst-case work remains exponential in the number of offerings. MRV and
+child ordering change exploration order without sacrificing coverage. The
+initial feasible timetable supplies both a usable result on interruption and
+an upper bound from the beginning; a better initial bound may permit more
+pruning. A depth-first implementation can release resolved subtree detail
+after preserving its certificate, rather than retain the entire explored
+tree. No claim of consistently fast execution or optimality under a time
+limit is made.
+
+\clearpage
+\subsection{Demonstration on a small search instance}
+\label{andopt:demonstration}
+
+This instance demonstrates the AND-tree stage of Solution~2, using a
+feasible timetable supplied by the preceding OR-tree stage. It illustrates
+division, leaf and transition selection, incumbent improvement, pruning,
+and resolution of the root.
+
+\paragraph{Instance and initial incumbent.}
+Let $X=L=\{x,y,z\}$ and $T=\varnothing$, where $x,y,z$ are lecture
+sections of three different courses. There are two lecture slots,
+$s_1=\text{MWF 09:00--10:00}$ and
+$s_2=\text{MWF 10:00--11:00}$, with
+$D(x)=D(y)=D(z)=\{s_1,s_2\}$.
+Each slot has lecture maximum 2 and lecture minimum 0.
+The only additional active hard restriction is
+$\operatorname{noncompatible}(x,y)$, so $a(x)\ne a(y)$.
+There are no mandatory assignments, unwanted slots, active-learning
+requirements, pairing requests, same-course section pairs, or special
+course bookings; all other hard restrictions are inactive for this
+illustrative instance. Thus $a_{\mathrm{fix}}=\varnothing$.
+
+The preference data are
+\[
+ w(x,s_1)=4,\qquad w(y,s_1)=2,\qquad w(z,s_1)=1,
+\]
+with all other preference values zero. Because every other soft term
+vanishes here, a complete feasible timetable has score
+\[
+ \operatorname{Eval}(a)
+ =4\mathbf{1}[a(x)=s_2]
+  +2\mathbf{1}[a(y)=s_2]
+  +\mathbf{1}[a(z)=s_2].
+\]
+The lower bound counts exactly those preference penalties already fixed
+by a partial assignment. Use offering order $x<y<z$ and slot order
+$s_1<s_2$ for ties.
+
+Suppose the OR-tree stage returns
+\[
+ a_{\mathrm{init}}=\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_2\},
+ \qquad B=\operatorname{Eval}(a_{\mathrm{init}})=5.
+\]
+This timetable satisfies the hard restrictions: $x$ and $y$ use different
+slots, and the largest occupancy is 2. Its choices supply an upper bound;
+they do not fix the optimization root.
+
+\paragraph{First division and depth-first selection.}
+The initial state is
+$q_0=(\operatorname{Opt}(\varnothing,\{x,y,z\}),?)$.
+Its lower bound is 0 and all three legal domains have size 2.
+Consequently $f_{\mathrm{tran}}$ selects $x$ by MRV with the fixed tie-break,
+and $\operatorname{Erw}_{\land}$ expands the root using
+\[
+ \operatorname{Div}\bigl(
+ \operatorname{Opt}(\varnothing,\{x,y,z\}),
+ \operatorname{Opt}(\{x\mapsto s_1\},\{y,z\}),
+ \operatorname{Opt}(\{x\mapsto s_2\},\{y,z\})
+ \bigr).
+\]
+These two child cases have lower bounds 0 and 4, respectively.
+They both belong to the selected division. The control must account for
+both, although it need not enumerate every completion of a pruned child.
+The depth-first $f_{\mathrm{leaf}}$ selects the $x\mapsto s_1$ child first.
+
+Here $D_a(y)=\{s_2\}$ because $x$ and $y$ are noncompatible,
+whereas $D_a(z)=\{s_1,s_2\}$. MRV therefore selects $y$ and creates the
+single legal child $y\mapsto s_2$.
+For $a=\{x\mapsto s_1,y\mapsto s_2\}$, the lower bound is 2,
+which is below the current $B=5$.
+Both slots remain legal for $z$, giving two complete child cases with
+lower bounds 2 and 3.
+
+\newpage
+\paragraph{Incumbent update and pruning.}
+The following table records the recursive visit order after the root.
+A dash indicates that an offering is still unassigned.
+\begin{center}
+\small
+\begin{tabular}{c|ccc|c|p{6.0cm}}
+Visit & $x$ & $y$ & $z$ & $\operatorname{LB}$ & Action \\ \hline
+1 & $s_1$ & -- & -- & 0 & Expand on $y$; only $s_2$ is legal. \\
+2 & $s_1$ & $s_2$ & -- & 2 & Expand on $z$ into both legal slots. \\
+3 & $s_1$ & $s_2$ & $s_1$ & 2 & Complete and valid: replace the incumbent; $B\gets2$. \\
+4 & $s_1$ & $s_2$ & $s_2$ & 3 & Complete and valid: score 3; keep the incumbent. \\
+5 & $s_2$ & -- & -- & 4 & Prune: $4\ge B=2$; retain certificate 4.
+\end{tabular}
+\end{center}
+
+At visit 3 the incumbent becomes
+$a_{\mathrm{best}}=\{x\mapsto s_1,y\mapsto s_2,z\mapsto s_1\}$.
+Visit 4 is evaluated because the controller checks complete assignments
+before its lower-bound pruning rule. Its certificate is its exact score 3.
+After resolving the first root child, depth-first traversal reaches the
+$x\mapsto s_2$ child. Its preference penalty of 4 is already unavoidable,
+so no completion below it can improve the incumbent of score 2.
+The controller marks that case resolved with certificate 4 and generates
+no descendants there. Pruning does not declare it infeasible.
+
+\paragraph{Combining results and stopping.}
+The two $z$ leaves return certificates 2 and 3.
+Their parent retains $\min(2,3)=2$; the single-child division on $y$
+also returns 2. The root then combines its two child certificates:
+\[
+ \ell_{\mathrm{root}}=\min(2,4)=2=B.
+\]
+Every selected child case is now resolved, so the root can be marked
+$\mathsf{yes}$ and $G_{\land}$ holds. Resolved subtree detail may be
+contracted after preserving these certificates and the incumbent.
+The driver returns $a_{\mathrm{best}}$ with status $\mathsf{OPTIMAL}$.
+
+As an independent check, the four feasible assignments have scores
+\[
+ \begin{array}{c|cccc}
+ (a(x),a(y),a(z))&
+ (s_1,s_2,s_1)&(s_1,s_2,s_2)&(s_2,s_1,s_1)&(s_2,s_1,s_2)\\ \hline
+ \operatorname{Eval}(a)&2&3&4&5
+ \end{array}
+\]
+and hence the minimum is indeed 2. The search did not need to enumerate
+the final two assignments during optimization: the retained bound
+accounted for their entire root child case.

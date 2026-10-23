@@ -1,0 +1,80 @@
+\section{Model I: OR-Tree Feasibility Search}
+\subsection{Search model: $A_{\lor}=(S_{\lor},T_{\lor})$}
+\paragraph{Problem descriptions.}
+\begin{equation}
+\boxed{\Prob_{\lor}=\{(a,U):a\text{ is partial},\ U=X\setminus\domn(a)\}.}
+\end{equation}
+Here $a$ is the current partial timetable, and $U$ contains unscheduled components. A node has the lecture's form
+\begin{equation}
+  ((a,U),sol),\qquad sol\in\{\yes,\und,\no\}.
+\end{equation}
+\paragraph{Alternatives.}
+Select a component $x\in U$ and define
+\begin{equation}
+  D_a(x)=\{s\in D(x):\Consistent(a\cup\{x\mapsto s\})\}.
+\end{equation}
+For every $s_i\in D_a(x)$, let
+\begin{equation}
+  pr_i=(a\cup\{x\mapsto s_i\},U\setminus\{x\}).
+\end{equation}
+Then the application-specific alternative relation is
+\begin{equation}
+  \boxed{\Altern(pr,pr_1,\ldots,pr_r),\qquad r=|D_a(x)|.}
+\end{equation}
+\paragraph{States and transitions.}
+Following Lecture 11,
+\begin{equation}
+  S_{\lor}\subseteq\Otree,\qquad
+  T_{\lor}=\{(q,q'): \Erw_{\lor}(q,q')\text{ or }\Erw_{\lor}^{*}(q,q')\}.
+\end{equation}
+The extension relation marks a solved leaf $\yes$, marks an unsolvable leaf $\no$, or expands a leaf using $\Altern$. Extensions can act on leaves inside a larger tree.
+\TODO{Write the four formal $\Erw_{\lor}$ cases from Lecture 11, using the definitions above.}
+
+\subsection{Search process: $P_{\lor}=(A_{\lor},\Env_{\lor},K_{\lor})$}
+\TODO{Define $\Env_{\lor}$, leaf selection, and slot ordering. Proposed $K_{\lor}$: depth-first unfinished-leaf selection and MRV component selection. No forward checking is necessary for correctness.}
+The MRV component selection is
+\begin{equation}
+  \boxed{x^*=\arg\min_{x\in U}|D_a(x)|.}
+\end{equation}
+
+\subsection{Search instance: $\Inst_{\lor}=(q_0,G_{\lor})$}
+Start with
+\begin{equation}
+  a_0=\varnothing,\quad U_0=X,\quad q_0=((a_0,U_0),\und).
+\end{equation}
+A leaf is solved if $U=\varnothing$ and $\Const(a)$ is true. The search halts when a solved branch exists or all alternatives have failed; these are distinct outcomes.
+\TODO{Define $G_{\lor}$ recursively in terms of the tree and distinguish success from exhaustive failure.}
+
+\subsection{Algorithm 1: OR-tree feasibility}
+\begin{algorithm}[H]
+\caption{OR-Tree Feasibility Search (operational outline)}
+\begin{algorithmic}[1]
+\Require Components $X$, domains $D$, partial checker $\Consistent$
+\Ensure Complete valid timetable, or FAILURE
+\State Initialize tree $q\gets((\varnothing,X),\und)$
+\While{an unresolved leaf exists}
+  \State $v\gets$ deepest unresolved leaf of $q$
+  \State $(a,U)\gets$ problem description at $v$
+  \If{$U=\varnothing$}
+    \If{$\Const(a)$}
+      \State Mark $v$ as $\yes$; \Return $a$
+    \Else
+      \State Mark $v$ as $\no$; \State \textbf{continue}
+    \EndIf
+  \EndIf
+  \State $x\gets\arg\min_{y\in U}|D_a(y)|$ \Comment{MRV}
+  \State $C\gets D_a(x)$
+  \If{$C=\varnothing$}
+    \State Mark $v$ as $\no$
+  \Else
+    \ForAll{$s\in C$ in deterministic slot order}
+      \State Add child $((a\cup\{x\mapsto s\},U\setminus\{x\}),\und)$ to $v$
+    \EndFor
+  \EndIf
+\EndWhile
+\State \Return FAILURE
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Worked OR-tree derivation}
+\TODO{Starting with $a_0=\varnothing$ and $U_0=X$, show every intermediate $(a_i,U_i)$; draw an OR-tree with at least one failing alternative and one solved leaf. Explain why the search stops on its first successful path.}
