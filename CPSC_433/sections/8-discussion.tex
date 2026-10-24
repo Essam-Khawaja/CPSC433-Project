@@ -1,2 +1,5 @@
 \section{Discussion and Limitations}
 \TODO{Explain why three models may be informative but more complex than required. Discuss infeasible inputs, local minima, sound bounding, valid outputs on timeout, and algorithm selection for large instances.}
+
+% Essam Condensed
+The shared OR-tree stage may exhaust all alternatives without finding a feasible timetable. If it is interrupted before that determination, infeasibility has not been established. Set-based hill climbing can reach local minima because it only accepts improving Moves or Swaps. AND-tree branch-and-bound preserves a complete feasible incumbent while exploring the full assignment space, but its worst-case work is exponential; only a completed search or a zero lower bound with zero penalty establishes global optimality. For larger instances, a time budget may be needed, and the returned timetable should be labelled feasible rather than optimal when the search is interrupted.

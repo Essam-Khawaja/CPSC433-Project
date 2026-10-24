@@ -17,6 +17,10 @@ We are aiming to solve the problem of creating academic schedules for a semester
 % Why does this need AI search? (2-3 sentences)
 This problem requires a search paradigm, rather than implementing it in traditional computation based programming 
 
+% Essam Condensed
+The objective is to assign lectures and tutorials to permitted weekly slots so that every hard constraint holds and the soft-constraint penalty is minimized. This proposal compares two ways to improve a valid timetable: OR-tree feasibility followed by set-based local search, or OR-tree feasibility followed by AND-tree branch-and-bound. Section~\ref{sec:problem} formalizes the scheduling instance once; later sections instantiate the search models and controls without redefining the same constraints.
+
+
 
 \subsection{Models proposed}
 We consider three search paradigms:
