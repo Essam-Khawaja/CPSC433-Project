@@ -1,47 +1,27 @@
-\ifdefined\savedparindent\else\newlength{\savedparindent}\fi
-\ifdefined\savedparskip\else\newlength{\savedparskip}\fi
-\setlength{\savedparindent}{\parindent}
-\setlength{\savedparskip}{\parskip}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{0.6\baselineskip plus 2pt}
-
 \section{Overall Search Architecture}
 \label{sec:architecture}
-
-\subsection{How the models relate}
-\label{sec:relate}
-
 We propose two complete search systems that share the same first stage:
 \begin{itemize}
-  \item \textbf{Proposal A:} OR-tree for an initial valid timetable (Section~4) $\rightarrow$ set-based improvement (Section~5).
-  \item \textbf{Proposal B:} OR-tree for an initial valid timetable (Section~4) $\rightarrow$ AND-tree optimization (Section~6).
+  \item \textbf{Proposal A:} OR-tree for an initial valid timetable (Section~\ref{sec:or}) $\rightarrow$ set-based improvement (Section~\ref{sec:set}).
+  \item \textbf{Proposal B:} OR-tree for an initial valid timetable (Section~\ref{sec:or}) $\rightarrow$ AND-tree optimization (Section~\ref{andopt:section}).
 \end{itemize}
-\begin{equation}
-\boxed{
-\begin{array}{ccc}
- & \text{OR-tree (Model I)} \ \longrightarrow\ \mathit{assign}_0 & \\[2pt]
- \swarrow & & \searrow\\[2pt]
- \text{Set-based (Model II)} & & \text{AND-tree (Model III)}\\
- \downarrow & & \downarrow\\
- \mathit{assign}_A & & \mathit{assign}_B\\[2pt]
- \text{Proposal A} & & \text{Proposal B}
+\[
+\boxed{\begin{array}{ccccc}
+&&\text{OR-tree feasibility}&&\\[-1pt]
+&&\downarrow&&\\[-1pt]
+&&a_{\mathrm{init}}&&\\[-1pt]
+&\swarrow&&\searrow&\\[-1pt]
+\text{Set-based improvement}&&&&\text{AND-tree optimization}\\[-1pt]
+\downarrow&&&&\downarrow\\[-1pt]
+a_A&&&&a_B
 \end{array}}
-\label{eq:proposals}
-\end{equation}
-
+\]
 All three models use the problem definition of Section~\ref{sec:problem}: the components $X$, the domains $D(x)$, the overlap test \eqref{eq:overlap}, the checker $\mathrm{Consistent}$ \eqref{eq:consistent} and $\mathrm{Eval}$.
 
-\textbf{Shared first stage:} Both second stages need a valid timetable to start from. The OR-tree (Section~4) finds one, $\mathit{assign}_0$, or reports that no valid timetable exists. It only looks for feasibility and ignores $\mathrm{Eval}$.
+\textbf{Shared first stage:} Both second stages need a valid timetable to start from. The OR-tree finds one, $a_{\mathrm{init}}$, or exhausts its alternatives. It only looks for feasibility and ignores $\mathrm{Eval}$.
 
-\textbf{How the stages connect:} Both second stages begin with $\mathit{assign}_0$ as their best timetable and only replace it with a strictly better valid one, so
+\textbf{How the stages connect:} Both second stages begin with $a_{\mathrm{init}}$ as their best timetable and only replace it with a strictly better valid one, so
 \[
-\mathrm{Eval}(\mathit{assign}_A) \le \mathrm{Eval}(\mathit{assign}_0)
-\quad\text{and}\quad
-\mathrm{Eval}(\mathit{assign}_B) \le \mathrm{Eval}(\mathit{assign}_0).
+\mathrm{Eval}(a_A)\leq\mathrm{Eval}(a_{\mathrm{init}}),\qquad
+\mathrm{Eval}(a_B)\leq\mathrm{Eval}(a_{\mathrm{init}}).
 \]
-
-\textbf{Why these models:} We separate finding a valid timetable from improving it because the hard constraints are strict and many, while $\mathrm{Eval}$ only matters among timetables that are already valid. Finding a valid timetable is a constraint satisfaction problem, which an OR-tree handles directly: it places one component at a time, discards a branch as soon as $\mathrm{Consistent}$ fails, and either finds a valid timetable or shows that none exists. For the second stage we offer two options with different trade-offs. Set-based search (Proposal A) works only on complete valid timetables and changes them in small steps, so it always has a valid timetable to return, but it can stop at a local optimum. The AND-tree (Proposal B) searches all scheduling choices with branch-and-bound and can show that its result is optimal if it finishes, but on large inputs it may not finish in reasonable time. Both proposals use the same OR-tree first stage, so that part is built the same way whichever proposal is chosen.
-
-% restore the document defaults
-\setlength{\parindent}{\savedparindent}
-\setlength{\parskip}{\savedparskip}

@@ -1,12 +1,3 @@
 \section{Introduction}
-\subsection{Scheduling problem and motivation}
-\TODO{Describe the University of Calgary weekly lecture/tutorial scheduling problem. Distinguish hard constraints from soft penalties.}
-
-\subsection{Models proposed}
-We consider three search paradigms:
-\begin{itemize}
-  \item \textbf{OR-tree}: find one feasible timetable.
-  \item \textbf{Set-based}: improve a feasible timetable through local changes.
-  \item \textbf{AND-tree}: systematically explore scheduling decisions to seek a globally optimal timetable, using branch-and-bound.
-\end{itemize}
-\TODO{Explain whether the three models will be proposed as independent alternatives, a sequential hybrid, or both. State clearly what the instructor would select to implement.}
+\label{sec:intro}
+The objective is to assign lectures and tutorials to permitted weekly slots so that every hard constraint holds and the soft-constraint penalty is minimized. This proposal compares two ways to improve a valid timetable: OR-tree feasibility followed by set-based local search, or OR-tree feasibility followed by AND-tree branch-and-bound. Section~\ref{sec:problem} formalizes the scheduling instance once; later sections instantiate the search models and controls without redefining the same constraints.

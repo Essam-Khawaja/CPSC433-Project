@@ -1,21 +1,15 @@
-\section{End-to-End Integration and Comparison}
-\subsection{Algorithm 4: Optional combined pipeline}
-\begin{algorithm}[H]
-\caption{Combined Three-Paradigm Pipeline}
-\begin{algorithmic}[1]
-\Require Scheduling instance $I$
-\Ensure Best valid timetable found, or FAILURE
-\State $a_0\gets\Call{ORFeasibility}{I}$
-\If{$a_0=\mathsf{FAILURE}$}
-  \State \Return FAILURE
-\EndIf
-\State $a_1\gets\Call{SetBasedImprove}{I,a_0}$
-\State $a_2\gets\Call{ANDOptimize}{I,a_1}$
-\State \Return $a_2$ \Comment{Optimal only if AND stage completed}
-\end{algorithmic}
-\end{algorithm}
+\section{Integration and Comparison}
+\label{sec:integration}
+The OR-tree is the shared feasibility stage. The team proposes two alternatives, not a sequential three-stage pipeline.
+The shared OR-tree returns a feasible $a_0$, or FAILURE if every alternative has been exhausted. The chosen optimization branch is then applied:
+\[
+ a_{\mathrm{out}}=\begin{cases}
+ \operatorname{SetBasedImprove}(I,a_0),&\text{Proposal A},\\
+ \operatorname{ANDOptimize}(I,a_0),&\text{Proposal B}.
+ \end{cases}
+\]
+If feasibility search is interrupted without a solution, the outcome is inconclusive rather than infeasible.
 
-\subsection{Comparison of the three paradigms}
 \begin{table}[H]
 \centering\small
 \caption{Summary of proposed models}\label{tab:comparison}
@@ -31,7 +25,4 @@ Optimal? & Not targeted & Not guaranteed & If complete\\
 \bottomrule
 \end{tabularx}
 \end{table}
-\TODO{Explain each model's pros and cons: search memory, runtime, completeness, and solution quality. Avoid claiming an AND-tree guarantees optimality if the search budget expires.}
-
-\subsection{Unified worked example}
-\TODO{Use one small course-scheduling instance across all three models. Show the OR-tree's first feasible score, set-based's improved score, and AND-tree's exploration/proof of optimality. The same input and penalty parameters must be used in all three worked examples.}
+Both alternatives preserve hard constraints and return a timetable with evaluation no greater than the OR-tree starting solution. Proposal A is typically less memory-intensive but can stop at a local optimum; Proposal B can prove optimality if its search completes, but has exponential worst-case work. If its resource budget expires, it returns the best feasible incumbent without claiming optimality. The two examples use different small instances; each demonstrates the relevant model and its control.

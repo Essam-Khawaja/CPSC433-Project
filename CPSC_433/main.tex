@@ -1,6 +1,4 @@
 \documentclass[11pt,letterpaper]{article}
-
-% ===== Packages =====
 \usepackage[margin=0.88in]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern,microtype}
@@ -8,27 +6,20 @@
 \usepackage{booktabs,tabularx,array}
 \usepackage{enumitem}
 \usepackage[dvipsnames]{xcolor}
-\usepackage{algorithm,algpseudocode,float}
+\usepackage{float}
 \usepackage{fancyhdr}
 \usepackage[hidelinks,bookmarks=false]{hyperref}
-
-% ===== Presentation =====
-\definecolor{navy}{HTML}{173452}
-\definecolor{todoink}{HTML}{9A542C}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt}
-\setlist[itemize]{leftmargin=1.5em,itemsep=1pt,topsep=3pt}
+\setlength{\parskip}{5pt}
+\setlist[itemize]{leftmargin=1.5em,itemsep=1pt,topsep=2pt}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small CPSC 433 -- Project Proposal}
-\fancyhead[R]{\small Three Search Paradigms}
+\fancyhead[R]{\small Two Alternative Pipelines}
 \fancyfoot[C]{\thepage}
 \setlength{\headheight}{14pt}
 \renewcommand{\headrulewidth}{0.35pt}
-\newcommand{\TODO}[1]{\par\noindent{\color{todoink}\textbf{[TO FILL:} #1\textbf{]}}\par}
-
-% ===== Mathematical notation =====
-\newcommand{\Const}{\operatorname{Const}}
+\newcommand{\Const}{\operatorname{Constr}}
 \newcommand{\Consistent}{\operatorname{Consistent}}
 \newcommand{\Eval}{\operatorname{Eval}}
 \newcommand{\domn}{\operatorname{dom}}
@@ -48,20 +39,16 @@
 \newcommand{\Schedule}{\mathsf{Schedule}}
 \newcommand{\Verify}{\mathsf{Verify}}
 \newcommand{\Best}{\mathsf{Best}}
-\newcommand{\LB}{\mathsf{LB}}
+\newcommand{\LB}{\operatorname{LB}}
 \newcommand{\Score}{\mathsf{Score}}
-
 \begin{document}
-
-% ===== Cover =====
 \begin{titlepage}
-\centering
-\vspace*{2cm}
+\centering\vspace*{2cm}
 {\Large University of Calgary\\CPSC 433 -- Artificial Intelligence\par}
 \vspace{1.6cm}
-{\Huge\bfseries Course Timetabling via\\Three Search Paradigms\par}
+{\Huge\bfseries Course Timetabling via\\Two Alternative Search Pipelines\par}
 \vspace{0.8cm}
-{\Large OR-Tree Feasibility, Set-Based Improvement,\\and AND-Tree Optimization\par}
+{\Large OR-Tree Feasibility followed by\\Set-Based or AND-Tree Optimization\par}
 \vspace{1.5cm}
 {\large Formal Search Models and Processes -- Proposal\par}
 \vfill
@@ -74,14 +61,7 @@ Member 5: & [NAME / UCID]\\[7pt]
 Date: & [SUBMISSION DATE]
 \end{tabular}
 \end{titlepage}
-
-\tableofcontents
-\newpage
-
-% ===== Summary =====
 \input{sections/abstract}
-
-% Each section lives in its own file so team members can edit in parallel without merge conflicts.
 \input{sections/1-introduction}
 \input{sections/2-problem}
 \input{sections/3-architecture}
@@ -91,7 +71,6 @@ Date: & [SUBMISSION DATE]
 \input{sections/7-integration}
 \input{sections/8-discussion}
 \input{sections/9-conclusion}
-
 \begin{thebibliography}{9}
 \bibitem{project} CPSC 433. \emph{Project Description}, Version 1, University of Calgary, Fall 2025.
 \bibitem{problem} CPSC 433. \emph{Project Problem Description}, Version 1, University of Calgary, Fall 2025.
@@ -101,9 +80,4 @@ Date: & [SUBMISSION DATE]
 \bibitem{or} CPSC 433. \emph{Lecture 11: Or-Tree-Based Search}, University of Calgary.
 \bibitem{controls} CPSC 433. \emph{Lecture 14: Search Controls}, University of Calgary.
 \end{thebibliography}
-
-\appendix
-\input{sections/appendix-a-constraints}
-\input{sections/appendix-b-derivations}
-
 \end{document}
