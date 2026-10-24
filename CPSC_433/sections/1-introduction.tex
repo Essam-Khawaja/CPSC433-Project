@@ -2,6 +2,22 @@
 \subsection{Scheduling problem and motivation}
 \TODO{Describe the University of Calgary weekly lecture/tutorial scheduling problem. Distinguish hard constraints from soft penalties.}
 
+% What’s being scheduled, and why? (3–4 sentences)
+% p.1–2 (opening framing, Lectures/Tutorials/Slots)
+We are aiming to solve the problem of creating academic schedules for a semester at the University of Calgary, by making a single weekly schedule (which is then repeated for 13 weeks) containing $\mathit{Lectures}$ and $\mathit{Tutorials}$ sections (belonging to a course) which fit in weekly room time $\mathit{Slots}$ with designated start and end times. There can be multiple $\mathit{Tutorials}$ sections which subdivide a particular $\mathit{Lectures}$ section and there can be more than one $\mathit{Lectures}$ section. Furthermore, there are a number of specified hard and soft constraints on how each lecture/tutorial can fit into the available room time $\mathit{Slots}$ (from Monday-Friday). There are two categories of room time $\mathit{Slots}$, one for lectures and the other for tutorials, along with specific ``active learning'' designation for some rooms, with the number of rooms limited per slot. This problem is similar to what a student would do when creating a weekly class schedule in Schedule Builder, although we are creating the section times which students pick from.
+
+% Why are slots harder than they look?(3–5 sentences) 
+% p.7–8 (“Time Slots” and the day-linking hard constraints)	
+
+
+% What makes a timetable valid, and what makes it good? (5-7 sentences)
+% p.3 (Constr and Eval), p.4–6 (general constraints), p.9 (UofC-specific)
+
+
+% Why does this need AI search? (2-3 sentences)
+This problem requires a search paradigm, rather than implementing it in traditional computation based programming 
+
+
 \subsection{Models proposed}
 We consider three search paradigms:
 \begin{itemize}
