@@ -3,3 +3,6 @@ CPSC_433/.texpadtmp
 
 # Local repository recovery archive
 /backups/
+
+# Built by CI (Build PDF workflow); not tracked
+CPSC_433/main.pdf
