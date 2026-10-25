@@ -1,80 +1,219 @@
-\section{Model I: OR-Tree Feasibility Search}
-\subsection{Search model: $A_{\lor}=(S_{\lor},T_{\lor})$}
+\section{Shared Model: OR-Tree Validity Search}
+\label{sec:or}
+
+OR-tree search fits the first stage because any complete
+valid timetable is an acceptable starting point for
+optimization. Each branch represents a sequence of slot
+assignments, and the search stops after finding one valid
+completion. This stage does not minimize soft penalties.
+
+\subsection{Search model}
+\label{sec:or-model}
+
+The model is $A_{\lor}=(S_{\lor},T_{\lor})$.
+
 \paragraph{Problem descriptions.}
-\begin{equation}
-\boxed{\Prob_{\lor}=\{(a,U):a\text{ is partial},\ U=X\setminus\domn(a)\}.}
-\end{equation}
-Here $a$ is the current partial timetable, and $U$ contains unscheduled components. A node has the lecture's form
-\begin{equation}
-  ((a,U),sol),\qquad sol\in\{\yes,\und,\no\}.
-\end{equation}
+A problem description records the current partial assignment
+and the components still to schedule:
+\[
+\mathit{Prob}_{\lor}
+=\{(\mathit{assign},U):
+  \mathit{assign}\text{ is a partial assignment},\
+  U=X\setminus\operatorname{dom}(\mathit{assign})\}.
+\]
+
+\paragraph{States.}
+A search state is an OR-tree, so
+$S_{\lor}\subseteq\mathit{Otree}$.
+A leaf is $(pr,sol)$, where
+$pr\in\mathit{Prob}_{\lor}$ and
+$sol\in\{\mathsf{yes},?,\mathsf{no}\}$.
+An internal node is $(pr,sol,b_1,\ldots,b_r)$,
+where each $b_i$ is an OR-tree.
+
 \paragraph{Alternatives.}
-Select a component $x\in U$ and define
-\begin{equation}
-  D_a(x)=\{s\in D(x):\Consistent(a\cup\{x\mapsto s\})\}.
-\end{equation}
-For every $s_i\in D_a(x)$, let
-\begin{equation}
-  pr_i=(a\cup\{x\mapsto s_i\},U\setminus\{x\}).
-\end{equation}
-Then the application-specific alternative relation is
-\begin{equation}
-  \boxed{\Altern(pr,pr_1,\ldots,pr_r),\qquad r=|D_a(x)|.}
-\end{equation}
-\paragraph{States and transitions.}
-Following Lecture 11,
-\begin{equation}
-  S_{\lor}\subseteq\Otree,\qquad
-  T_{\lor}=\{(q,q'): \Erw_{\lor}(q,q')\text{ or }\Erw_{\lor}^{*}(q,q')\}.
-\end{equation}
-The extension relation marks a solved leaf $\yes$, marks an unsolvable leaf $\no$, or expands a leaf using $\Altern$. Extensions can act on leaves inside a larger tree.
-\TODO{Write the four formal $\Erw_{\lor}$ cases from Lecture 11, using the definitions above.}
+For an unassigned component $x$, its currently legal slots are
+\[
+D_{\mathit{assign}}(x)
+=\{s\in D(x):
+  \mathrm{Consistent}(
+    \mathit{assign}\cup\{x\mapsto s\})\}.
+\]
+For a consistent partial assignment, select $x\in U$ and
+write $D_{\mathit{assign}}(x)=\{s_1,\ldots,s_r\}$.
+When $r>0$, define
+\[
+\mathit{Altern}(pr,pr_1,\ldots,pr_r),
+\]
+where
+\[
+pr=(\mathit{assign},U),
+\qquad
+pr_i=
+(\mathit{assign}\cup\{x\mapsto s_i\},U\setminus\{x\}).
+\]
+Each child assigns the same component to a different legal
+slot. Together, the children cover every valid completion
+of the parent.
 
-\subsection{Search process: $P_{\lor}=(A_{\lor},\Env_{\lor},K_{\lor})$}
-\TODO{Define $\Env_{\lor}$, leaf selection, and slot ordering. Proposed $K_{\lor}$: depth-first unfinished-leaf selection and MRV component selection. No forward checking is necessary for correctness.}
-The MRV component selection is
-\begin{equation}
-  \boxed{x^*=\arg\min_{x\in U}|D_a(x)|.}
-\end{equation}
+\paragraph{Extension rules and transitions.}
+We use the following $\mathit{Erw}_{\lor}$ operations:
+\begin{enumerate}
+  \item Mark a leaf $(pr,?)$ as $(pr,\mathsf{yes})$ when
+  $U=\varnothing$ and
+  $\mathrm{Constr}(\mathit{assign})=\mathsf{true}$.
 
-\subsection{Search instance: $\Inst_{\lor}=(q_0,G_{\lor})$}
-Start with
-\begin{equation}
-  a_0=\varnothing,\quad U_0=X,\quad q_0=((a_0,U_0),\und).
-\end{equation}
-A leaf is solved if $U=\varnothing$ and $\Const(a)$ is true. The search halts when a solved branch exists or all alternatives have failed; these are distinct outcomes.
-\TODO{Define $G_{\lor}$ recursively in terms of the tree and distinguish success from exhaustive failure.}
+  \item Mark a leaf $(pr,?)$ as $(pr,\mathsf{no})$ when
+  $\mathrm{Consistent}(\mathit{assign})$ is false, or
+  some $x\in U$ has
+  $D_{\mathit{assign}}(x)=\varnothing$.
 
-\subsection{Algorithm 1: OR-tree feasibility}
-\begin{algorithm}[H]
-\caption{OR-Tree Feasibility Search (operational outline)}
-\begin{algorithmic}[1]
-\Require Components $X$, domains $D$, partial checker $\Consistent$
-\Ensure Complete valid timetable, or FAILURE
-\State Initialize tree $q\gets((\varnothing,X),\und)$
-\While{an unresolved leaf exists}
-  \State $v\gets$ deepest unresolved leaf of $q$
-  \State $(a,U)\gets$ problem description at $v$
-  \If{$U=\varnothing$}
-    \If{$\Const(a)$}
-      \State Mark $v$ as $\yes$; \Return $a$
-    \Else
-      \State Mark $v$ as $\no$; \State \textbf{continue}
-    \EndIf
-  \EndIf
-  \State $x\gets\arg\min_{y\in U}|D_a(y)|$ \Comment{MRV}
-  \State $C\gets D_a(x)$
-  \If{$C=\varnothing$}
-    \State Mark $v$ as $\no$
-  \Else
-    \ForAll{$s\in C$ in deterministic slot order}
-      \State Add child $((a\cup\{x\mapsto s\},U\setminus\{x\}),\und)$ to $v$
-    \EndFor
-  \EndIf
-\EndWhile
-\State \Return FAILURE
-\end{algorithmic}
-\end{algorithm}
+  \item Expand an unresolved leaf using its alternatives:
+  \[
+  (pr,?)
+  \longrightarrow
+  (pr,?,(pr_1,?),\ldots,(pr_r,?)).
+  \]
+
+  \item Apply an operation within a subtree:
+  \[
+  (pr,?,b_1,\ldots,b_i,\ldots,b_r)
+  \longrightarrow
+  (pr,?,b_1,\ldots,b_i',\ldots,b_r)
+  \]
+  whenever $\mathit{Erw}_{\lor}(b_i,b_i')$ holds.
+  All other subtrees remain unchanged.
+\end{enumerate}
+These operations define the transitions used by our process:
+\[
+T_{\lor}
+=\{(q,q')\in S_{\lor}\times S_{\lor}:
+  \mathit{Erw}_{\lor}(q,q')\}.
+\]
+Failed alternatives remain marked $\mathsf{no}$ while the
+control explores other unresolved leaves.
+
+\subsection{Search process}
+\label{sec:or-process}
+
+The process is
+$P_{\lor}=(A_{\lor},\mathit{Env}_{\lor},K_{\lor})$.
+The environment contains the scheduling instance and fixed
+orders for components and slots.
+
+The control selects the deepest unresolved leaf (depth-first search), breaking
+ties by selecting in the order in which children were generated. It
+first checks whether the leaf can be marked
+$\mathsf{yes}$ or $\mathsf{no}$. Otherwise, it selects an
+unassigned component using minimum remaining values (MRV):
+\[
+x^*\in\operatorname*{arg\,min}_{x\in U}
+|D_{\mathit{assign}}(x)|.
+\]
+Ties are resolved by the fixed component order. The selected
+leaf is expanded with all legal slots for $x^*$, listed
+in the fixed slot order.
+
+This schedules the most restricted remaining component
+first. Depth-first exploration follows one assignment
+sequence until it succeeds or fails, then selects another
+unresolved leaf.
+
+\subsection{Search instance and stopping condition}
+\label{sec:or-instance}
+
+The search instance is
+$\mathit{Inst}_{\lor}=(q_0,G_{\lor})$, with
+\[
+q_0=((\varnothing,X),?).
+\]
+Mandatory assignments are enforced through the domains and
+the consistency checker defined in Section~\ref{sec:problem}.
+
+Let $\mathit{Leaves}(q)$ denote the leaves of tree $q$.
+The stopping condition is
+\[
+\begin{aligned}
+G_{\lor}(q)=\mathsf{yes}\iff{}&
+\exists(pr,\mathsf{yes})\in\mathit{Leaves}(q)\\
+&{}\lor
+\forall(pr,sol)\in\mathit{Leaves}(q):
+sol=\mathsf{no}.
+\end{aligned}
+\]
+In the first case, return the complete assignment in the
+successful leaf. In the second, return FAILURE.
+
+Without an early stop at the time limit, the search terminates
+because every expansion assigns one additional component and
+the domains are finite. Since every legal alternative is
+included, it finds a valid timetable whenever one exists.
+Its worst-case search size is exponential.
 
 \subsection{Worked OR-tree derivation}
-\TODO{Starting with $a_0=\varnothing$ and $U_0=X$, show every intermediate $(a_i,U_i)$; draw an OR-tree with at least one failing alternative and one solved leaf. Explain why the search stops on its first successful path.}
+\label{sec:or-example}
+
+Let $X=\{x,y,z\}$ be three lectures of different,
+non-500-level courses. Each has domain $\{s_1,s_2\}$,
+where $s_1$ is MWF 9:00--10:00 and $s_2$ is
+MWF 10:00--11:00. Both slots have lecture capacity two.
+The only conflict is $\mathit{notcompatible}(x,y)$.
+There are no preassignments, active-learning requirements,
+or other restrictions affecting these lectures.
+
+Use component order $x<y<z$ and slot order $s_2,s_1$.
+Initially,
+\[
+pr_0=(\varnothing,\{x,y,z\}),
+\qquad q_0=(pr_0,?).
+\]
+All domains have size two, so the control selects $x$.
+The rule
+\[
+\mathit{Altern}(pr_0,pr_1,pr_2)
+\]
+uses
+\[
+pr_1=(\{x\mapsto s_2\},\{y,z\}),
+\qquad
+pr_2=(\{x\mapsto s_1\},\{y,z\}).
+\]
+Applying the expansion gives
+\[
+q_0\longrightarrow
+q_1=(pr_0,?,(pr_1,?),(pr_2,?)).
+\]
+
+The control selects $(pr_1,?)$. Here $y$ has only $s_1$
+available because it cannot overlap $x$, whereas $z$
+still has two choices. Thus MRV selects $y$, and
+\[
+\mathit{Altern}(pr_1,pr_3),
+\qquad
+pr_3=(\{x\mapsto s_2,y\mapsto s_1\},\{z\}).
+\]
+The recursive extension rule gives
+\[
+q_1\longrightarrow
+q_2=(pr_0,?,(pr_1,?,(pr_3,?)),(pr_2,?)).
+\]
+
+At $pr_3$, both slots remain legal for $z$. Applying
+$\mathit{Altern}(pr_3,pr_4,pr_5)$ creates two complete
+assignments:
+\[
+\begin{aligned}
+pr_4&=(\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_2\},
+       \varnothing),\\
+pr_5&=(\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_1\},
+       \varnothing).
+\end{aligned}
+\]
+The control selects $(pr_4,?)$ first and marks it
+$(pr_4,\mathsf{yes})$, since all hard constraints hold.
+The search returns
+\[
+\mathit{assign}_0
+=\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_2\}.
+\]
+The leaves for $pr_2$ and $pr_5$ remain unexplored as one successful leaf is sufficient.

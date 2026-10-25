@@ -1,3 +1,7 @@
 \begin{abstract}
-\TODO{Write 150--200 words: problem, all three paradigms, different state representations, search controls, and the benefit/limitation of each. Write this last.}
+We propose two search systems for the University of Calgary course timetabling problem: assigning lectures and tutorials to weekly time slots while satisfying hard constraints and minimizing soft-constraint penalties. Both systems begin with OR-tree search, whose nodes describe partial timetables. Depth-first exploration with minimum remaining values selects offerings and explores legal slot assignments until a complete valid timetable is found or all alternatives fail.
+
+The systems differ in how they improve this initial timetable. Proposal A uses set-based search, representing a timetable as a set of assignment facts. Greedy hill climbing selects Move or Swap rules that preserve hard constraint validity while reducing the overall penalty value. Proposal B uses AND-tree search to divide the optimization problem into assignment cases, applying branch-and-bound to prune cases that cannot improve the best timetable found.
+
+Both systems retain a valid timetable during optimization. Proposal A may stop at a local optimum, whereas Proposal B can establish global optimality when its search completes. We define each model, its search control and stopping conditions, and demonstrate rule applications through worked examples.
 \end{abstract}

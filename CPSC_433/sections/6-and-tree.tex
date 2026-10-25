@@ -1,220 +1,285 @@
-% Main preamble requires \usepackage{amsmath,amssymb}.
-% No document wrapper, package imports, or algorithm definitions are included.
-% Labels use andopt: to avoid collisions with other sections.
-
-\section{Model III: AND-Tree Optimization}
+\section{Proposal B: AND-Tree Optimization Search}
 \label{andopt:section}
 
-The AND-tree stage minimizes soft penalties using branch-and-bound.
-It receives a complete feasible timetable $a_{\mathrm{init}}$ from OR-tree
-search and initializes the incumbent
-$a_{\mathrm{best}}=a_{\mathrm{init}}$ and
-$B=\operatorname{Eval}(a_{\mathrm{best}})$.
-Only mandatory assignments $a_{\mathrm{fix}}$ are fixed at the search root;
-the incumbent's other choices remain open to revision.
-Every child case in a selected division must be explored or soundly
-excluded before its parent is resolved. Child timetables are compared,
-not merged.
+AND-tree search divides the optimization problem into
+assignment cases and compares their results. Unlike the
+OR-tree stage, finding one valid timetable is not enough:
+every case must be explored or shown unable to improve
+the best timetable found. Branch-and-bound allows us
+to skip such cases, although the worst-case search
+size remains exponential.
 
 \subsection{Search model}
+\label{sec:and-model}
+
 The model is $A_{\land}=(S_{\land},T_{\land})$.
 
-\paragraph{Problem descriptions and division.}
-Let $X=L\cup T$ contain all lectures and tutorials/labs after shared
-preprocessing, and let $D(x)\subseteq S$ be the typed slot domain of $x$.
-Both stages use the same hard-constraint predicate $\operatorname{Constr}$
-and full nonnegative objective $\operatorname{Eval}$.
-For a partial assignment $a\supseteq a_{\mathrm{fix}}$, put
+\paragraph{Problem descriptions.}
+Each problem description is a tuple
+$(\mathit{assign},U)$, where $\mathit{assign}$ is a
+partial timetable and $U$ contains its unassigned
+components:
 \[
- U(a)=X\setminus\operatorname{dom}(a),\qquad
- D_a(x)=\{s\in D(x):
-       \operatorname{Consistent}(a\cup\{x\mapsto s\})\}.
+\mathit{Prob}_{\land}
+=\{(\mathit{assign},U):
+  \mathit{assign}\text{ is a partial assignment},\
+  U=X\setminus\operatorname{dom}(\mathit{assign})\}.
 \]
-Here $\operatorname{Consistent}$ rejects known hard violations without
-rejecting any partial assignment having a feasible completion.
-Define
-\[
- \operatorname{Prob}_{\land}
- =\{\operatorname{Opt}(a,U(a)):a\text{ extends }a_{\mathrm{fix}}\}.
-\]
-The task $\operatorname{Opt}(a,U)$ concerns all valid completions of $a$.
-Write $V(a,U)$ for their minimum full penalty, or $+\infty$ if none exists.
-For $x\in U$ with $D_a(x)=\{s_1,\ldots,s_k\}\ne\varnothing$, define
-\begin{align*}
- p&=\operatorname{Opt}(a,U),&
- p_i&=\operatorname{Opt}(a\cup\{x\mapsto s_i\},U\setminus\{x\}),\\
- &&\operatorname{Div}(p,p_1,\ldots,p_k)&\text{ holds}.
-\end{align*}
-A selected division includes every legal slot case for $x$. These cases
-partition the parent's feasible completions, so
-\[
- V(a,U)=\min_i V(a\cup\{x\mapsto s_i\},U\setminus\{x\}).
-\]
-Each child retains the full partial assignment, preserving shared capacities
-and conflicts.
+The task at a node is to examine the timetables that extend
+its partial assignment and determine whether they improve
+the best timetable found so far.
 
-\paragraph{States, certificates, and transitions.}
-States are whole AND-trees, $S_{\land}\subseteq Atree$, whose nodes contain
-a problem $p$ and status $?\,$ or $\mathsf{yes}$.
-A resolved node $v$ retains a certificate
-$B\leq\ell_v\leq V(a,U)$; thus its case cannot improve the incumbent.
-A complete valid timetable supplies its exact score after any incumbent
-update, an infeasible case supplies $+\infty$, and a pruned case supplies
-its lower bound. A parent retains the minimum of its children's certificates.
-Consequently $\mathsf{yes}$ means resolved, not necessarily feasible.
+\paragraph{Division relation.}
+For a consistent unfinished assignment, choose
+$x\in U$ and let
+$D_{\mathit{assign}}(x)=\{s_1,\ldots,s_r\}$
+be its currently legal slots.
+When $r>0$, define
+\[
+\mathit{Div}(pr,pr_1,\ldots,pr_r),
+\]
+where
+\[
+\begin{aligned}
+pr&=(\mathit{assign},U),\\
+pr_i&=(\mathit{assign}\cup\{x\mapsto s_i\},
+       U\setminus\{x\}).
+\end{aligned}
+\]
+Each child assigns the chosen component to a different legal
+slot. For example, if a lecture can use either of two slots,
+$\mathit{Div}$ creates two cases: one for each slot.
+We find the best timetable across these cases. A case can
+be skipped only when it has no valid solution or cannot
+improve the best timetable already found.
 
-The extension relation $\operatorname{Erw}_{\land}$ applies either rule
-at a leaf within the surrounding tree:
+\paragraph{States and extension rules.}
+A state is an AND-tree, so
+$S_{\land}\subseteq\mathit{Atree}$.
+A leaf has the form $(pr,sol)$ and an internal node
+has the form $(pr,sol,b_1,\ldots,b_r)$, where
+$sol\in\{?,\mathsf{yes}\}$.
+
+An unresolved leaf is expanded using $\mathit{Div}$:
 \[
- (p,?)\longrightarrow(p,\mathsf{yes})
- \quad\text{if certified},\qquad
- (p,?)\longrightarrow(p,?,(p_1,?),\ldots,(p_k,?))
- \quad\text{if }\operatorname{Div}(p,p_1,\ldots,p_k).
+(pr,?)
+\longrightarrow
+(pr,?,(pr_1,?),\ldots,(pr_r,?)).
 \]
-Writing $\operatorname{Erw}_{\land}^{*}$ for a finite sequence of extensions,
-including zero steps, define
+When no further search is needed in a case, its leaf is marked resolved:
 \[
- T_{\land}=\{(q,q')\in S_{\land}^{2}:
- \operatorname{Erw}_{\land}(q,q')
- \ \text{or}\ \operatorname{Erw}_{\land}^{*}(q',q)\}.
+(pr,?)\longrightarrow(pr,\mathsf{yes}).
 \]
-The reversed relation permits contraction. Control contracts only resolved
-subtrees after preserving their certificates and incumbent updates.
+These operations can also be applied within a subtree,
+leaving the other subtrees unchanged.
+
+Here, $\mathsf{yes}$ means that the comparison task for a
+case is complete. This happens when a complete timetable has
+been evaluated, no valid completion exists, or the lower bound
+shows that the case cannot improve the best timetable.
+It does not mean that every case contains a valid timetable.
+
+We use $\mathit{Erw}_{\land}$ for leaf expansion, marking a
+completed case, and applying either operation within a subtree.
+The transitions used by our process are
+\[
+T_{\land}
+=
+\{(q,q')\in S_{\land}\times S_{\land}:
+  \mathit{Erw}_{\land}(q,q')\}.
+\]
+
+Our control does not use the backtracking operation
+$\mathit{Erw}_{\land}^{*}$. Each division includes every
+legal slot for the chosen component, so no alternative
+division needs to be tried. Completed cases remain marked
+$\mathsf{yes}$ while the control selects another unresolved
+leaf.
 
 \subsection{Search process}
-The process is $P_{\land}=(A_{\land},Env_{\land},K_{\land})$.
+\label{sec:and-process}
 
-The environment stores the instance, incumbent and bound, node certificates,
-traversal records, and fixed offering/slot orders for tie-breaking.
+The process is
+$P_{\land}=(A_{\land},\mathit{Env}_{\land},K_{\land})$.
+The environment contains the scheduling instance,
+the best valid timetable found, its score, and fixed
+component and slot orders for breaking ties.
 
-\paragraph{Lower bound and pruning.}
-For a partial assignment $a$, count only penalties already fixed by its
-assigned offerings:
+\paragraph{Best timetable.}
+The OR-tree result initializes
 \[
- \operatorname{LB}(a)=C_{\mathrm{pref}}(a)
-       +p_{\mathrm{pair}}N_{\mathrm{pair}}(a)
-       +p_{\mathrm{section}}N_{\mathrm{section}}(a).
+\mathit{assign}_{\mathrm{best}}=\mathit{assign}_0,
+\qquad
+B=\mathrm{Eval}(\mathit{assign}_{\mathrm{best}}).
 \]
-Here $C_{\mathrm{pref}}(a)$ is the total penalty of preference requests
-already violated by assigned offerings.
-The count $N_{\mathrm{pair}}(a)$ is the number of requested unordered
-same-type pairs whose two offerings are already assigned to different
-slots; reversed duplicates count once.
-The count $N_{\mathrm{section}}(a)$ is the number of unordered pairs of
-distinct lecture sections of the same department/course number whose two
-offerings are already assigned to the same slot.
-The constants $p_{\mathrm{pair}}$ and $p_{\mathrm{section}}$ are the
-corresponding per-pair penalties. These constants and
-$C_{\mathrm{pref}}$ include any applicable objective weights and use the
-same counting conventions as $\operatorname{Eval}$; all contributions
-are nonnegative.
+Whenever a complete valid timetable has a score below
+$B$, it replaces $\mathit{assign}_{\mathrm{best}}$
+and updates $B$.
 
-Every completion $\widehat a\supseteq a$ preserves the assignments in $a$,
-so none of these counted penalties can disappear within this branch.
-Minimum-occupancy penalties are omitted because later assignments may
-remove a shortfall, but remain in the full objective. Consequently
+The initial timetable is a benchmark, not a set of
+fixed choices. The optimization search starts with
+only the mandatory assignments.
+
+\paragraph{Lower bound.}
+Within a branch, assigned components keep their slots.
+Their missed-preference penalties therefore cannot be removed
+by assigning the remaining components. We use their sum as
+a lower bound (LB):
 \[
- \operatorname{LB}(a)\leq\operatorname{Eval}(\widehat a)
- \quad\text{for every feasible completion }\widehat a\supseteq a.
+\mathrm{LB}(\mathit{assign})
+=
+\sum_{x\in\operatorname{dom}(\mathit{assign})}
+\ \sum_{\substack{s\in\mathit{Slots}\\
+s\neq\mathit{assign}(x)}}
+\mathit{preference}(x,s).
 \]
-Since $B=\operatorname{Eval}(a_{\mathrm{best}})$ is the score of an existing
-complete feasible timetable, prune when $\operatorname{LB}(a)\geq B$:
-no completion can improve the incumbent. Equality may also be pruned
-because only one optimal timetable is required.
+Every complete timetable in this branch has at least this
+penalty, since all other penalties are nonnegative.
+Complete timetables are evaluated using the full
+$\mathrm{Eval}$ function.
 
-\paragraph{Control.}
-The leaf selector $f_{\mathrm{leaf}}$ visits unresolved leaves depth-first,
-ordering each division's children by increasing lower bound and then the
-fixed slot order. The transition selector $f_{\mathrm{tran}}$ applies the
-first applicable rule:
+\paragraph{Pruning.}
+If $\mathrm{LB}(\mathit{assign}) \ge B$, the branch cannot
+improve the best timetable and is marked resolved.
+Equality can also be pruned because we need only one
+optimal timetable.
+
+\paragraph{Search control.}
+The function $f_{\mathrm{leaf}}$ selects the deepest
+unresolved leaf, with ties broken by child order.
+For that leaf, $f_{\mathrm{trans}}$ selects the
+following operation:
 \begin{enumerate}
- \item Reject a hard-inconsistent assignment.
- \item If complete, check all hard constraints, evaluate it, and replace
- the incumbent only if its score is smaller.
- \item Reject a case with an empty legal domain for any remaining offering.
- \item Prune if $\operatorname{LB}(a)\geq B$.
- \item Otherwise choose $x^*=\arg\min_{x\in U}|D_a(x)|$ (MRV), break ties
- by the fixed offering order, and expand into all its legal slot cases.
+  \item If the partial assignment is inconsistent,
+  or an unassigned component has no legal slot,
+  resolve the case as infeasible.
+
+  \item If the assignment is complete and valid,
+  evaluate it, update the best timetable if its
+  score is lower, and resolve the case.
+
+  \item Otherwise, if
+  $\mathrm{LB}(\mathit{assign})\ge B$,
+  resolve the case by pruning.
+
+  \item Otherwise, select an unassigned component
+  using minimum remaining values and apply
+  $\mathit{Div}$ to generate all its legal slot cases.
 \end{enumerate}
-Infeasible cases receive certificate $+\infty$; pruning retains
-$\operatorname{LB}(a)$ rather than declaring infeasibility.
-Combine certificates upward once all children are resolved.
-Resolved cases are never explored again.
+MRV ties use the fixed component order. Children
+are ordered by increasing lower bound, with ties
+broken by the fixed slot order.
 
-\subsection{Search instance, termination, and guarantees}
+\subsection{Search instance and stopping condition}
+\label{sec:and-instance}
 
-The instance is $\operatorname{Inst}_{\land}=(q_0,G_{\land})$, where
+Let $\mathit{assign}_{\mathrm{fix}}$ contain the
+mandatory assignments, including triggered special
+bookings. The search instance is
+$\mathit{Inst}_{\land}=(q_0,G_{\land})$, where
 \[
- q_0=(\operatorname{Opt}(a_{\mathrm{fix}},
-             X\setminus\operatorname{dom}(a_{\mathrm{fix}})),?).
+q_0=
+((\mathit{assign}_{\mathrm{fix}},
+  X\setminus\operatorname{dom}(
+    \mathit{assign}_{\mathrm{fix}})),?).
 \]
-The goal $G_{\land}(q)$ holds when the root is resolved: a leaf is resolved
-when certified $\mathsf{yes}$, and an expanded task is resolved when all its
-children are resolved and their certificates combined.
-At termination,
+The search finishes when every leaf is resolved:
 \[
- B\leq\ell_{\mathrm{root}}
-   \leq V(a_{\mathrm{fix}},U(a_{\mathrm{fix}}))\leq B,
+G_{\land}(q)=\mathsf{yes}
+\iff
+\forall (pr,\mathit{sol})\in\operatorname{Leaves}(q):
+\mathit{sol}=\mathsf{yes}.
 \]
-so the feasible incumbent is optimal. A zero-score incumbent is immediately
-optimal by nonnegativity. A resource-limit interruption returns the incumbent
-with optimality unproved. Finite domains and one new assignment per division
-ensure termination without interruption; worst-case work remains exponential.
+The search has finitely many assignment cases, and resolved
+cases are not explored again. If allowed to finish -- time limit not exceeded -- every
+case has either been checked or shown unable to improve
+the best timetable. The returned timetable is therefore
+optimal.
 
-\subsection{Demonstration on a small search instance}
+The process returns
+$\mathit{assign}_B=\mathit{assign}_{\mathrm{best}}$.
+
+\subsection{Worked AND-tree derivation}
 \label{andopt:demonstration}
 
-\paragraph{Instance.}
-Let $X=L=\{x,y,z\}$ be lectures of three different courses, $T=\varnothing$,
-and $a_{\mathrm{fix}}=\varnothing$.
-Each lecture can use $s_1=\text{MWF 09:00--10:00}$ or
-$s_2=\text{MWF 10:00--11:00}$. Both slots have maximum 2 and minimum 0.
-The only additional active hard restriction is
-$\operatorname{noncompatible}(x,y)$, requiring $a(x)\ne a(y)$.
-There are no pairing requests, same-course section pairs, or other active
-restrictions. All three lectures prefer $s_1$, with penalties 4, 2, and 1,
-respectively; all other soft terms vanish. Writing $\mathbf{1}[Q]$
-for 1 when $Q$ holds and 0 otherwise,
-\[
- \operatorname{Eval}(a)=4\mathbf{1}[a(x)=s_2]
-       +2\mathbf{1}[a(y)=s_2]+\mathbf{1}[a(z)=s_2].
-\]
-Use tie orders $x<y<z$ and $s_1<s_2$.
-Suppose OR-tree supplies the feasible incumbent
-$a_{\mathrm{init}}=\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_2\}$,
-with $B=5$.
+Consider three lectures $x,y,z$ of different,
+non-500-level courses. Each can use either
+$s_1=$ MWF 9:00--10:00 or
+$s_2=$ MWF 10:00--11:00.
+Both slots have capacity two and minimum zero,
+and $x$ and $y$ must not overlap.
+There are no mandatory assignments or other hard
+restrictions affecting these lectures.
 
-\paragraph{Expansion and traversal.}
-Initially all domains have size 2, so MRV selects $x$. The root division is
+The only nonzero preferences are
 \[
- \operatorname{Div}\bigl(
- \operatorname{Opt}(\varnothing,\{x,y,z\}),
- \operatorname{Opt}(\{x\mapsto s_1\},\{y,z\}),
- \operatorname{Opt}(\{x\mapsto s_2\},\{y,z\})\bigr).
+\mathit{preference}(x,s_1)=4,\qquad
+\mathit{preference}(y,s_1)=2,\qquad
+\mathit{preference}(z,s_1)=1.
 \]
-Its children have lower bounds 0 and 4, so $f_{\mathrm{leaf}}$ visits
-$x\mapsto s_1$ first. Here $D_a(y)=\{s_2\}$ and
-$D_a(z)=\{s_1,s_2\}$; MRV selects $y$, then divides on $z$.
-The visit order after the root is:
-\begin{center}
-\small
-\begin{tabular}{c|ccc|c|p{6.0cm}}
-Visit & $x$ & $y$ & $z$ & $\operatorname{LB}$ & Action \\ \hline
-1 & $s_1$ & -- & -- & 0 & Expand on $y$; only $s_2$ is legal. \\
-2 & $s_1$ & $s_2$ & -- & 2 & Expand on $z$ into both legal slots. \\
-3 & $s_1$ & $s_2$ & $s_1$ & 2 & Valid completion: update $a_{\mathrm{best}}$ and $B\gets2$. \\
-4 & $s_1$ & $s_2$ & $s_2$ & 3 & Valid completion: retain incumbent of score 2. \\
-5 & $s_2$ & -- & -- & 4 & Prune because $4\geq B=2$; retain certificate 4.
-\end{tabular}
-\end{center}
-A dash denotes an unassigned offering. Visit 4 is evaluated because the
-complete-assignment rule precedes pruning. Visit 5 generates no descendants:
-the penalty 4 is already unavoidable.
+All other soft penalties are zero.
+The initial valid timetable is
+\[
+\mathit{assign}_0
+=\{x\mapsto s_2,y\mapsto s_1,z\mapsto s_2\},
+\qquad B=5.
+\]
 
-\paragraph{Resolution.}
-The two $z$ leaves return certificates 2 and 3. Their parent and the
-single-child division on $y$ return 2. The root combines
-$\ell_{\mathrm{root}}=\min(2,4)=2=B$, satisfies $G_{\land}$, and returns
-$a_{\mathrm{best}}=\{x\mapsto s_1,y\mapsto s_2,z\mapsto s_1\}$ as optimal.
-The four feasible timetables have scores 2, 3, 4, and 5; the bound accounts
-for the final two without enumerating them during optimization.
+At the root, MRV selects $x$ using the component
+order $x<y<z$. We apply
+\[
+\mathit{Div}(pr_0,pr_1,pr_2),
+\]
+where
+\[
+\begin{aligned}
+pr_0&=(\varnothing,\{x,y,z\}),\\
+pr_1&=(\{x\mapsto s_1\},\{y,z\}),\\
+pr_2&=(\{x\mapsto s_2\},\{y,z\}).
+\end{aligned}
+\]
+The tree changes from
+\[
+(pr_0,?)
+\longrightarrow
+(pr_0,?,(pr_1,?),(pr_2,?)).
+\]
+The child bounds are 0 and 4, so the control explores
+$pr_1$ first.
+
+Since $x$ occupies $s_1$, only $s_2$ is legal for $y$.
+The division $\mathit{Div}(pr_1,pr_3)$ creates
+\[
+pr_3=(\{x\mapsto s_1,y\mapsto s_2\},\{z\}),
+\]
+whose lower bound is 2.
+
+Both slots remain legal for $z$.
+Applying $\mathit{Div}(pr_3,pr_4,pr_5)$ creates
+the following complete cases:
+\[
+\begin{array}{c|ccc|c}
+\text{Case} & x & y & z & \mathrm{Eval}\\
+\hline
+pr_4 & s_1 & s_2 & s_1 & 2\\
+pr_5 & s_1 & s_2 & s_2 & 3
+\end{array}
+\]
+The control evaluates $pr_4$ first and updates $B$ from
+$5$ to $2$. Case $pr_5$ is valid but does not improve this
+score. Both leaves are marked $\mathsf{yes}$.
+
+The remaining root case $pr_2$ has lower bound $4$.
+Since $4 \ge B=2$, it is pruned and marked $\mathsf{yes}$.
+The leaves $pr_4$, $pr_5$, and $pr_2$ are now all resolved,
+so $G_{\land}(q)=\mathsf{yes}$.
+
+The process returns
+\[
+\mathit{assign}_B
+=\{x\mapsto s_1,y\mapsto s_2,z\mapsto s_1\},
+\qquad
+\mathrm{Eval}(\mathit{assign}_B)=2.
+\]
+The unexplored descendants of $pr_2$ cannot improve
+this score, so the result is globally optimal.

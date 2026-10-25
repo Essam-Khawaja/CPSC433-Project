@@ -1,5 +1,53 @@
 \section{Discussion and Limitations}
 \label{sec:discussion}
 
-The shared OR-tree stage may exhaust all alternatives without finding a feasible timetable; if it is interrupted before that determination, infeasibility has not been established, and neither proposal has a timetable to return. Set-based hill climbing can reach local minima because it only accepts improving Moves or Swaps, thus rejecting steps that could get it unstuck. AND-tree branch-and-bound preserves a complete feasible incumbent while covering the full assignment space, but its worst-case work is exponential; only a completed search or an incumbent with zero penalty establishes global optimality. AND-tree based search counts penalties into its lower bound that a later choice cannot undo, so it never skips the true best answer, although pruning mostly happens deep in the search as very little is locked in at the start. For larger instances, set-based search is preferred because its predictable runtime suits a time budget, and the returned timetable should be labelled feasible rather than optimal when the AND-tree search is interrupted.
+The selected system will run as a standalone application on
+the university's Linux machines, without internet resources
+or existing AI systems.
 
+\paragraph{Search effort.}
+Finding an initial valid timetable may require exploring many
+assignments, particularly when capacities and other hard
+constraints leave only a few choices. If no valid timetable exists,
+the OR-tree search must exhaust its alternatives before
+reporting failure. Choosing the component with the fewest
+legal slots helps expose alternatives that do not work early, but does not
+guarantee a short search.
+
+\paragraph{Limits of the optimization stages.}
+Set-based search accepts only moves and swaps that immediately
+reduce the penalty. It can therefore stop even when a better
+timetable exists, because reaching that timetable may require
+changing several components together or first accepting a
+change that does not improve the score.
+
+AND-tree search can establish an optimal result, but may need
+to examine many cases. Our lower bound counts only preference
+penalties already fixed by the current assignments. This makes
+the bound straightforward to check, but it ignores other
+penalties that may be unavoidable. As a result, some cases
+will remain in the search even though they cannot improve
+the best timetable. If all preference penalties are zero,
+this bound provides no pruning while the best known penalty
+is positive.
+
+\paragraph{Time limits.}
+We plan to use time limits in our implementation to control running
+time on larger instances. If the OR-tree search reaches this
+limit before finding a valid timetable, it will report that
+the search stopped without a solution, which does not establish that no valid timetable exists. If the limit is reached during
+either optimization stage, the system will return the best
+valid timetable found so far. It will report whether the search
+finished or stopped at the time limit, and will not claim
+optimality unless it has been established. A timetable with
+penalty zero is optimal because all penalties are nonnegative.
+
+\paragraph{Verification.}
+We will test each hard constraint and penalty calculation
+on small inputs with known results. On small 
+instances, an exhaustive search will provide the minimum
+penalty for comparison. Proposal B should match that minimum
+when its search finishes; Proposal A should return a valid
+timetable no worse than its initial timetable, though it may
+not reach the minimum. Larger inputs will be used to assess
+running time and solution quality.
