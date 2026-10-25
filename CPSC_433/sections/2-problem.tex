@@ -7,66 +7,87 @@
 
 \section{Formal Scheduling Problem}
 \label{sec:problem}
-We use the terminology and symbols of the problem description~[2] throughout. Symbols it does not define, such as $\mathit{overlap}$, $D(x)$ and $\mathrm{Consistent}$, are introduced below.
+
+The following definitions use the terminology
+of the project problem description~\cite{problem} and are
+shared by all three search models.
 
 \subsection{Components, slots, and domains}
 \label{sec:components}
-\textbf{Components:} $\mathit{Lectures}$ is the set of lecture sections and $\mathit{Tutorials}$ the set of tutorials and labs; labs (\texttt{LAB}) are treated exactly like tutorials (\texttt{TUT}). The set of all components to schedule is $X = \mathit{Lectures} + \mathit{Tutorials}$. Each lecture is named \textit{program, course number, section}, for example \texttt{CPSC 433 LEC 01}. For $x \in X$, $\mathit{course}(x)$ is the pair (program, number), e.g.\ (\texttt{CPSC}, 433).
 
-\textbf{Which lectures a tutorial belongs to:} A tutorial must not clash with its lecture. The tutorial's name tells us which lecture that is, and there are two naming forms:
-\begin{itemize}
-  \item \texttt{CPSC 433 LEC 01 TUT 02} names a section. It belongs to \texttt{CPSC 433 LEC 01} only.
-  \item \texttt{CPSC 433 TUT 01} names no section. It is a shared tutorial, open to students of every section, so it belongs to all lectures of \texttt{CPSC 433}.
-\end{itemize}
+\paragraph{Components.}
+Let $\mathit{Lectures}$ contain the lecture sections and
+$\mathit{Tutorials}$ contain the tutorials and labs, which
+are treated identically. The components to schedule are
+\[
+X=\mathit{Lectures}+\mathit{Tutorials},
+\]
+where $+$ denotes the union of these disjoint sets.
+For $x\in X$, $\mathit{course}(x)$ is the tuple containing
+its program and course number, such as $(\texttt{CPSC},433)$.
 
-The set of lectures that tutorial $t$ belongs to is
+A tutorial with a lecture identifier belongs to that section;
+a tutorial without one is shared by all sections of its course.
+Define
 \begin{equation}
-\mathit{Lec}(t) =
+\mathit{Lec}(t)=
 \begin{cases}
-\{\text{the lecture named in } t\} & \text{if $t$'s name has a \texttt{LEC} part},\\[2pt]
-\{\, l \in \mathit{Lectures} : \mathit{course}(l) = \mathit{course}(t) \,\} & \text{otherwise (shared tutorial).}
+\{\text{the lecture section named in }t\},
+  & \text{if }t\text{ has a \texttt{LEC} identifier},\\
+\{l\in\mathit{Lectures}:
+  \mathit{course}(l)=\mathit{course}(t)\},
+  & \text{otherwise}.
 \end{cases}
 \label{eq:parent}
 \end{equation}
 
-For example, if the input has \texttt{CPSC 433 LEC 01} and \texttt{CPSC 433 LEC 02}, then
-\begin{align*}
-\mathit{Lec}(\texttt{CPSC 433 LEC 02 TUT 01}) &= \{\texttt{CPSC 433 LEC 02}\},\\
-\mathit{Lec}(\texttt{CPSC 433 TUT 01}) &= \{\texttt{CPSC 433 LEC 01},\ \texttt{CPSC 433 LEC 02}\}.
-\end{align*}
-
-\textbf{Weekly slots:} The UofC rules link days together. A lecture placed on Monday must also meet Wednesday and Friday at the same time; anything placed on Tuesday must also meet Thursday; a tutorial placed on Monday must also meet Wednesday. So the scheduler never picks single days. It picks a \emph{day pattern and a start time}, and the linked days follow automatically. We call one such choice a \emph{slot}. Because the linking is built into the slot, the day-linking rules always hold and do not appear among the hard constraints in Section~\ref{sec:hard}.
-
-Formally, a slot is a triple
+\paragraph{Weekly slots.}
+A slot is a tuple
 \begin{equation}
-s = (\mathit{days}(s),\ \mathit{start}(s),\ \mathit{end}(s)),
+s=(\mathit{days}(s),\mathit{start}(s),\mathit{end}(s)).
 \label{eq:slot}
 \end{equation}
-meaning ``meet on every day in $\mathit{days}(s)$, from $\mathit{start}(s)$ to $\mathit{end}(s)$.'' For example, the lecture slot used for a Monday 9:00 lecture is $(\{\mathrm{Mon},\mathrm{Wed},\mathrm{Fri}\},\ 9{:}00,\ 10{:}00)$. For short, we name a slot by its day pattern and start time, so this slot is written \emph{MWF 9:00}. The day patterns are written MWF (Mon/Wed/Fri), TT (Tue/Thu), MW (Mon/Wed) and F (Fri only).
+Assigning a component to $s$ schedules it on every day in
+$\mathit{days}(s)$ at the stated time. This enforces the
+required links between weekdays.
 
-Lectures and tutorials use different slot patterns; Table~\ref{tab:slots} lists them all.
+We use M, T, W, R, and F for Monday through Friday.
+The available slot patterns are shown in
+Table~\ref{tab:slots}.
 
 \begin{table}[ht]
 \centering
-\caption{Slot patterns. Each row is one group of slots; $h$ is the start time.}
+\small
+\caption{Weekly slot patterns and permitted start times.}
 \label{tab:slots}
-\begin{tabular}{@{}lllllr@{}}
+\begin{tabular}{@{}llll@{}}
 \toprule
-Used by & Written as & Meets on & Length & Start times & Count \\
+Type & Days & Duration & Start times\\
 \midrule
-Lectures  & MWF $h$ & Mon, Wed, Fri & 1 h   & 8:00, 9:00, \ldots, 20:00 & 13 \\
-Lectures  & TT $h$  & Tue, Thu      & 1.5 h & 8:00, 9:30, \ldots, 18:30 & 8 \\
-\midrule
-Tutorials & MW $h$  & Mon, Wed      & 1 h   & 8:00, 9:00, \ldots, 20:00 & 13 \\
-Tutorials & TT $h$  & Tue, Thu      & 1 h   & 8:00, 9:00, \ldots, 20:00 & 13 \\
-Tutorials & F $h$   & Fri only      & 2 h   & 8:00, 10:00, \ldots, 18:00 & 6 \\
+Lecture & MWF & 1 hour
+  & 8:00, 9:00, \ldots, 20:00\\
+Lecture & TR & 1.5 hours
+  & 8:00, 9:30, \ldots, 18:30\\
+Tutorial & MW & 1 hour
+  & 8:00, 9:00, \ldots, 20:00\\
+Tutorial & TR & 1 hour
+  & 8:00, 9:00, \ldots, 20:00\\
+Tutorial & F & 2 hours
+  & 8:00, 10:00, \ldots, 18:00\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A given input offers only some of these slots, each with its capacities. $\mathit{Slots}$ is the set of offered slots. The offered lecture slots (top half of Table~\ref{tab:slots}) form $\mathit{Slots}_L$ and the offered tutorial slots (bottom half) form $\mathit{Slots}_T$, so $\mathit{Slots} = \mathit{Slots}_L + \mathit{Slots}_T$. Lectures may only use $\mathit{Slots}_L$ and tutorials only $\mathit{Slots}_T$.
+Let $\mathit{Slots}_L$ and $\mathit{Slots}_T$ contain the
+available lecture and tutorial slots, respectively, and let
+$\mathit{Slots}=\mathit{Slots}_L+\mathit{Slots}_T$.
+Each slot has specified room capacities and desired minimum
+occupancies. Lectures use only lecture slots, and tutorials
+use only tutorial slots.
 
-\textbf{Time overlap:} Since lecture and tutorial slots follow different grids, we compare actual meeting times. Two slots $s$ and $s'$ \emph{overlap} when they meet on a common day and their time ranges intersect:
+\paragraph{Time overlap.}
+Two slots overlap when they share a day and their time
+intervals intersect:
 \begin{equation}
 \mathit{overlap}(s, s') \iff
 \mathit{days}(s) \cap \mathit{days}(s') \neq \varnothing
@@ -74,34 +95,57 @@ A given input offers only some of these slots, each with its capacities. $\mathi
 \ \wedge\ \mathit{start}(s') < \mathit{end}(s).
 \label{eq:overlap}
 \end{equation}
+For example, a TR lecture from 9:30 to 11:00 overlaps a
+TR tutorial from 10:00 to 11:00. Meetings that end exactly
+when another begins do not overlap.
 
-For example, lecture slot TT 9:30 (9:30-11:00) overlaps tutorial slots TT 9:00 and TT 10:00.
-
-Two lectures, or two tutorials, can only clash if they are in the same slot, because slots of the same kind either fall on different days or follow each other without overlapping:
+Under the specified patterns, slots of the same type
+overlap exactly when they are equal:
 \begin{equation}
-s, s' \in \mathit{Slots}_L \ \text{ or } \ s, s' \in \mathit{Slots}_T \implies
-\bigl(\mathit{overlap}(s, s') \iff s = s'\bigr).
+\mathit{overlap}(s,s')\iff s=s'
+\quad
+\text{if }s,s'\in\mathit{Slots}_L
+\text{ or }s,s'\in\mathit{Slots}_T.
 \label{eq:overlap-eq}
 \end{equation}
 
-\textbf{Domains:} The \emph{domain} $D(x)$ is the set of slots component $x$ may use: the slots of its kind ($\mathit{Slots}_L$ or $\mathit{Slots}_T$), minus any slot ruled out by a hard constraint on $x$ alone ($C_5$, $C_8$ to $C_{10}$ and $C_{12}$ in Section~\ref{sec:hard}).
+\paragraph{Domains and assignments.}
+The domain $D(x)$ contains slots of the correct type for
+$x$ that satisfy its individual restrictions. These include
+preassignments, unwanted slots, evening requirements,
+active-learning availability, and the department meeting
+restriction. A preassignment restricts $D(x)$ to the
+specified slot if that slot meets the other restrictions;
+otherwise, $D(x)=\varnothing$.
 
-\textbf{Assignments:} A complete timetable is a function
-\begin{equation}
-\mathit{assign} : \mathit{Lectures} + \mathit{Tutorials} \to \mathit{Slots}, \qquad \mathit{assign}(x) \in D(x) \text{ for every } x \in X.
-\end{equation}
+A complete assignment is a function
+\[
+\mathit{assign}:X\to\mathit{Slots},
+\qquad
+\mathit{assign}(x)\in D(x)\quad\text{for every }x\in X.
+\]
+A partial assignment is defined only on the components
+in $\operatorname{dom}(\mathit{assign})\subseteq X$.
+This differs from $\mathit{partassign}$, which records
+mandatory assignments supplied with the instance.
 
-While a timetable is being built, only some components have a slot yet. Such a \emph{partial assignment} $\mathit{assign}$ is defined only on the components $\mathrm{dom}(\mathit{assign}) \subseteq X$ placed so far. (This is different from the input preassignment $\mathit{partassign}$ in Section~\ref{sec:hard}.)
-
-\textbf{Slot counts:} The capacity constraints ($C_1$ to $C_4$) need to know how full each slot is. For an assignment $\mathit{assign}$ and a slot $s$, $n_L(s)$ is the number of lectures $\mathit{assign}$ puts in $s$ and $n_T(s)$ the number of tutorials. $n_{L,\mathit{AL}}(s)$ and $n_{T,\mathit{AL}}(s)$ count only the ones with an $\mathit{activelearning}$ statement. Only placed components are counted, so the same counts work for partial assignments:
+\paragraph{Slot counts.}
+For the assignment under consideration, define
 \begin{align*}
-n_L(s) &= |\{ l \in \mathit{Lectures} \cap \mathrm{dom}(\mathit{assign}) : \mathit{assign}(l) = s \}|,\\
-n_T(s) &= |\{ t \in \mathit{Tutorials} \cap \mathrm{dom}(\mathit{assign}) : \mathit{assign}(t) = s \}|,\\
-n_{L,\mathit{AL}}(s) &= |\{ l \in \mathit{Lectures} \cap \mathrm{dom}(\mathit{assign}) : \mathit{activelearning}(l),\ \mathit{assign}(l) = s \}|,\\
-n_{T,\mathit{AL}}(s) &= |\{ t \in \mathit{Tutorials} \cap \mathrm{dom}(\mathit{assign}) : \mathit{activelearning}(t),\ \mathit{assign}(t) = s \}|.
+n_L(s)
+ &=|\{l\in\mathit{Lectures}\cap
+       \operatorname{dom}(\mathit{assign}):
+       \mathit{assign}(l)=s\}|,\\
+n_T(s)
+ &=|\{t\in\mathit{Tutorials}\cap
+       \operatorname{dom}(\mathit{assign}):
+       \mathit{assign}(t)=s\}|.
 \end{align*}
-
-For example, if $\mathit{assign}$ puts \texttt{CPSC 433 LEC 01} and \texttt{DATA 201 LEC 01} in MWF 9:00 and only \texttt{DATA 201 LEC 01} needs active learning, then $n_L(\text{MWF 9:00}) = 2$ and $n_{L,\mathit{AL}}(\text{MWF 9:00}) = 1$. $C_1$ then checks $2 \le \mathit{lecturemax}(\text{MWF 9:00})$ and $C_3$ checks $1 \le \mathit{ALlecturemax}(\text{MWF 9:00})$.
+The counts $n_{L,\mathrm{AL}}(s)$ and
+$n_{T,\mathrm{AL}}(s)$ are defined in the same way, but
+include only components with an $\mathit{activelearning}$
+requirement. These components also count toward the total
+lecture or tutorial capacity.
 
 \subsection{Hard constraints}
 \label{sec:hard}
@@ -114,7 +158,10 @@ Hard constraints are the rules a valid timetable cannot break. Besides the sets 
   \item the $\mathit{activelearning}(x)$ statements.
 \end{itemize}
 
-Here $\mathit{ALmax}(s)$ means $\mathit{ALlecturemax}(s)$ if $s \in \mathit{Slots}_L$ and $\mathit{ALtutorialmax}(s)$ if $s \in \mathit{Slots}_T$. Each constraint only looks at components that have been placed, so it can also be checked on a partial assignment.
+Here $\mathit{ALmax}(s)$ means $\mathit{ALlecturemax}(s)$ if $s \in \mathit{Slots}_L$ and $\mathit{ALtutorialmax}(s)$ if $s \in \mathit{Slots}_T$. These constraints also apply while the timetable is being built.
+We check room capacities and time restrictions using the components
+already assigned to slots. A conflict between two components is
+checked once both have been assigned.
 \begin{align}
 C_1 &:\ \forall s \in \mathit{Slots}_L:\ n_L(s) \le \mathit{lecturemax}(s) && \text{(lecture capacity)}\\
 C_2 &:\ \forall s \in \mathit{Slots}_T:\ n_T(s) \le \mathit{tutorialmax}(s) && \text{(tutorial capacity)}\\
@@ -126,93 +173,179 @@ C_7 &:\ \forall\, \mathit{notcompatible}(x,y):\ \neg\,\mathit{overlap}(\mathit{a
 C_8 &:\ \forall x \text{ with } \mathit{partassign}(x) \neq \$:\ \mathit{assign}(x) = \mathit{partassign}(x) && \text{(preassignment)}\\
 C_9 &:\ \forall\, \mathit{unwanted}(x,s):\ \mathit{assign}(x) \neq s && \text{(unwanted)}\\
 C_{10} &:\ \forall x \in X_9:\ \mathit{start}(\mathit{assign}(x)) \ge 18{:}00 && \text{(LEC 9 evening)}\\
-C_{11} &:\ \forall l, l' \in L_5 \text{ with } l \neq l':\ \mathit{assign}(l) \neq \mathit{assign}(l') && \text{(5XX non-overlap)}\\
-C_{12} &:\ \forall l \in \mathit{Lectures}:\ \mathit{assign}(l) \neq \mathrm{TT}\ 11{:}00 && \text{(TT 11:00 meeting)}\\
+C_{11} &:\ \forall l,l'\in L_5,\ l\neq l':
+\ \neg\,\mathit{overlap}(\mathit{assign}(l),\mathit{assign}(l'))
+&& \text{(5XX non-overlap)}\\
+C_{12} &:\ \forall l\in\mathit{Lectures}:
+\ \mathit{assign}(l)\neq \mathrm{TR}\ 11{:}00
+&& \text{(department meeting)}\\
 C_{13} &:\ \text{special CPSC 851/913 bookings (below)} && \notag
 \end{align}
 
-$X_9$ is the set of components whose name has a \texttt{LEC} number starting with 9, such as \texttt{CPSC 433 LEC 90} and \texttt{CPSC 433 LEC 90 TUT 01}; a shared tutorial such as \texttt{CPSC 433 TUT 01} has no \texttt{LEC} number and is not in $X_9$. $L_5$ is the set of 5XX lectures across all programs; because two lecture slots overlap only if they are equal \eqref{eq:overlap-eq}, $C_{11}$ keeps them from overlapping. The problem description writes $C_6$ as $\mathit{assign}(l) \neq \mathit{assign}(t)$; since lecture and tutorial slots are never equal, we read it as ``must not overlap''.
+$X_9$ contains components whose name includes a \texttt{LEC}
+number beginning with 9, including tutorials explicitly attached
+to such a section. A shared tutorial without a \texttt{LEC}
+identifier is not included solely because its course has an
+evening section. $L_5$ contains all 500-level lecture sections
+across programs. Lecture--tutorial conflicts are checked using
+time overlap because lecture and tutorial slots follow
+different time grids.
 
-\textbf{Special bookings ($C_{13}$):} CPSC 851 and CPSC 913 never appear in the input; we create them. If the input has a CPSC 351 lecture, we add the tutorial $t_{851} = \texttt{CPSC 851 TUT 01}$ to $\mathit{Tutorials}$, set $\mathit{partassign}(t_{851}) = \mathrm{TT}\ 18{:}00$, and add $\mathit{notcompatible}(t_{851}, y)$ for every CPSC 351 lecture and tutorial $y$. CPSC 913 is created the same way, as $t_{913}$, when the input has a CPSC 413 lecture. $C_{13}$ is then checked by $C_7$ and $C_8$. Like any other tutorial, these bookings count toward $\mathit{tutorialmax}(\mathrm{TT}\ 18{:}00)$, so if the input does not offer TT 18:00 with enough room for them, no valid timetable exists.
+\textbf{Special bookings ($C_{13}$):}
+If a CPSC 351 lecture is requested, we include one special
+CPSC 851 tutorial/lab booking at TR 18:00--19:00 and add
+incompatibilities with every CPSC 351 lecture, tutorial,
+and lab. A CPSC 413 lecture similarly triggers one CPSC 913
+booking at TR 18:00--19:00, incompatible with every
+CPSC 413 component.
 
-\textbf{Validity:} A complete timetable $\mathit{assign}$ is valid if it breaks no hard constraint:
+These bookings are included before search begins, so their
+fixed times and incompatibilities are enforced through
+$C_8$ and $C_7$. We assume that each booking uses one unit
+of tutorial capacity in its assigned slot.
+
+\textbf{Validity:}
+Let $\mathcal C$ be the collection of hard-constraint
+conditions described above. For a complete assignment
+using the permitted domains, define
 \begin{equation}
-\boxed{\mathrm{Constr}(\mathit{assign}) = \bigwedge_{i=1}^{13} C_i(\mathit{assign}).}
+\mathrm{Constr}(\mathit{assign})
+=\bigwedge_{C\in\mathcal C}C(\mathit{assign}).
 \label{eq:const}
 \end{equation}
+Thus $\mathrm{Constr}(\mathit{assign})=\mathsf{true}$
+exactly when every hard constraint holds.
 
-A partial assignment is \emph{consistent} if the components placed so far break no constraint:
+A partial assignment is consistent when all assigned
+components use permitted slots and their assignments
+violate no hard constraint:
 \begin{equation}
-\mathrm{Consistent}(\mathit{assign}) \iff \text{every } C_i \text{ holds on } \mathrm{dom}(\mathit{assign}).
+\begin{aligned}
+\mathrm{Consistent}(\mathit{assign})\iff{}&
+\bigl(\forall x\in\operatorname{dom}(\mathit{assign}):
+      \mathit{assign}(x)\in D(x)\bigr)\\
+&{}\land\text{no hard constraint is violated by}\\
+&\phantom{{}\land{}}\text{the assignments made so far.}
+\end{aligned}
 \label{eq:consistent}
 \end{equation}
 
-Once a partial assignment breaks a rule, placing more components cannot fix it: a full slot stays full and a clash stays a clash. So every model can discard a partial assignment as soon as $\mathrm{Consistent}$ fails.
+Consistency does not guarantee that the remaining components
+can be scheduled. However, a violation cannot be repaired
+by adding assignments while keeping existing assignments
+fixed. The tree searches can therefore discard such a branch.
 
 \subsection{Soft constraints and objective}
 \label{sec:soft}
-Soft constraints may be broken, but each violation adds penalty points. They use these inputs:
+
+Soft constraints measure the quality of a complete valid
+timetable. They use the following inputs:
 \begin{itemize}
-  \item minimums $\mathit{lecturemin}(s)$ for $s \in \mathit{Slots}_L$ and $\mathit{tutorialmin}(s)$ for $s \in \mathit{Slots}_T$;
-  \item $\mathit{preference} : (\mathit{Lectures} + \mathit{Tutorials}) \times \mathit{Slots} \to \mathbb{N}$ (0 where none is given);
-  \item the $\mathit{pair}(x,y)$ statements, with $x, y \in X$;
-  \item penalties $\mathit{pen}_{\mathit{lecturemin}}$, $\mathit{pen}_{\mathit{tutorialmin}}$, $\mathit{pen}_{\mathit{notpaired}}$, $\mathit{pen}_{\mathit{section}} \in \mathbb{N}$.
+  \item desired minimum occupancies
+  $\mathit{lecturemin}(s)$ and $\mathit{tutorialmin}(s)$;
+  \item preference values
+  $\mathit{preference}:X\times\mathit{Slots}\to\mathbb{N}_0$,
+  with zero where no preference is stated;
+  \item a list $\mathcal P$ of $\mathit{pair}(x,y)$ requests;
+  \item nonnegative penalty values
+  $\mathit{pen}_{\mathit{lecturemin}}$,
+  $\mathit{pen}_{\mathit{tutorialmin}}$,
+  $\mathit{pen}_{\mathit{notpaired}}$, and
+  $\mathit{pen}_{\mathit{section}}$.
 \end{itemize}
+Here $\mathbb{N}_0$ denotes the nonnegative integers.
+The total evaluation consists of the following five
+penalty contributions.
 
-There are five penalties:
-
-\textbf{Too few lectures:} If a lecture slot holds fewer lectures than its minimum, each missing lecture costs $\mathit{pen}_{\mathit{lecturemin}}$. A slot with minimum 3 that holds 1 lecture costs $2 \cdot \mathit{pen}_{\mathit{lecturemin}}$; a slot at or above its minimum costs nothing.
+\paragraph{Lecture minimums.}
+For each slot, every lecture missing from its desired minimum
+adds $\mathit{pen}_{\mathrm{lecturemin}}$. A slot at or above
+its minimum contributes zero:
 \begin{equation}
-E_{L\min}(\mathit{assign}) = \mathit{pen}_{\mathit{lecturemin}} \cdot
-  \sum_{s \in \mathit{Slots}_L} \max\bigl(0,\ \mathit{lecturemin}(s) - n_L(s)\bigr)
+E_{L\min}(\mathit{assign})
+=\mathit{pen}_{\mathit{lecturemin}}
+ \sum_{s\in\mathit{Slots}_L}
+ \max(0,\mathit{lecturemin}(s)-n_L(s)).
 \label{eq:elmin}
 \end{equation}
 
-\textbf{Too few tutorials:} The same for tutorial slots.
+\paragraph{Tutorial minimums.}
+Similarly, each tutorial below a slot's desired minimum
+adds $\mathit{pen}_{\mathit{tutorialmin}}$:
 \begin{equation}
-E_{T\min}(\mathit{assign}) = \mathit{pen}_{\mathit{tutorialmin}} \cdot
-  \sum_{s \in \mathit{Slots}_T} \max\bigl(0,\ \mathit{tutorialmin}(s) - n_T(s)\bigr)
+E_{T\min}(\mathit{assign})
+=\mathit{pen}_{\mathit{tutorialmin}}
+ \sum_{s\in\mathit{Slots}_T}
+ \max(0,\mathit{tutorialmin}(s)-n_T(s)).
 \label{eq:etmin}
 \end{equation}
 
-\textbf{Unmet preferences:} If a component does not get a slot it has a preference for, that preference's value is added.
+\paragraph{Time preferences.}
+For each component, we add the preference values of all
+preferred slots it does not receive:
 \begin{equation}
-E_{\mathrm{pref}}(\mathit{assign}) = \sum_{x \in X} \ \sum_{s \in \mathit{Slots},\ s \neq \mathit{assign}(x)}
-  \mathit{preference}(x, s)
+E_{\mathrm{pref}}(\mathit{assign})
+=\sum_{x\in X}
+ \sum_{\substack{s\in\mathit{Slots}\\
+                 s\neq\mathit{assign}(x)}}
+ \mathit{preference}(x,s).
 \label{eq:epref}
 \end{equation}
 
-\textbf{Unmet pairs:} If the two components of a $\mathit{pair}(x,y)$ statement are not in the same slot, this costs $\mathit{pen}_{\mathit{notpaired}}$. The instructor confirmed that inputs only pair two lectures or two tutorials, so ``same time'' in~[2] means the same slot. The order does not matter: $\mathit{pair}(x,y)$ and $\mathit{pair}(y,x)$ count as one preference.
+\paragraph{Requested pairs.}
+As clarified for this project, each pairing request
+contains two lectures or two tutorials. Each request
+whose components occupy different slots adds
+$\mathit{pen}_{\mathit{notpaired}}$:
 \begin{equation}
-E_{\mathrm{pair}}(\mathit{assign}) = \mathit{pen}_{\mathit{notpaired}} \cdot
-  \bigl|\{\, \{x,y\} : \mathit{pair}(x,y),\ \mathit{assign}(x) \neq \mathit{assign}(y) \,\}\bigr|
+E_{\mathrm{pair}}(\mathit{assign})
+=\mathit{pen}_{\mathit{notpaired}}
+ \sum_{(x,y)\in\mathcal P}
+ \mathbf{1}[\mathit{assign}(x)\neq\mathit{assign}(y)].
 \label{eq:epair}
 \end{equation}
+Here $\mathbf{1}[Q]$ equals 1 when $Q$ is true and 0
+otherwise. The sum counts each supplied pairing request.
 
-\textbf{Sections sharing a slot:} Each pair of lecture sections of the same course placed in the same slot costs $\mathit{pen}_{\mathit{section}}$.
+\paragraph{Lecture sections sharing a slot.}
+Let $\mathcal R$ contain the unordered pairs of distinct
+lecture sections belonging to the same course:
+\[
+\mathcal R=
+\{\{l,l'\}:l,l'\in\mathit{Lectures},\
+l\neq l',\
+\mathit{course}(l)=\mathit{course}(l')\}.
+\]
+Each such pair assigned to the same slot adds
+$\mathit{pen}_{\mathit{section}}$:
 \begin{equation}
-\begin{split}
-E_{\mathrm{section}}(\mathit{assign}) &= \mathit{pen}_{\mathit{section}} \cdot
-  \bigl|\{\, \{l, l'\} \subseteq \mathit{Lectures} : l \neq l',\ \mathit{course}(l) = \mathit{course}(l'),\\
-  &\qquad \mathit{assign}(l) = \mathit{assign}(l') \,\}\bigr|
-\end{split}
+E_{\mathrm{section}}(\mathit{assign})
+=\mathit{pen}_{\mathit{section}}
+ \sum_{\{l,l'\}\in\mathcal R}
+ \mathbf{1}[\mathit{assign}(l)=\mathit{assign}(l')].
 \label{eq:esection}
 \end{equation}
+Using unordered pairs counts each pair of sections once.
 
-\textbf{Objective:} $\mathrm{Eval}$ is the total penalty,
+\paragraph{Objective.}
+The evaluation function is the sum of these five penalties:
 \begin{equation}
-\boxed{\begin{aligned}
-\mathrm{Eval}(\mathit{assign}) = {}& E_{L\min}(\mathit{assign}) + E_{T\min}(\mathit{assign}) + E_{\mathrm{pref}}(\mathit{assign})\\
-&+ E_{\mathrm{pair}}(\mathit{assign}) + E_{\mathrm{section}}(\mathit{assign}),
-\end{aligned}}
+\begin{aligned}
+\mathrm{Eval}(\mathit{assign})={}&
+ E_{L\min}(\mathit{assign})
+ +E_{T\min}(\mathit{assign})\\
+&+E_{\mathrm{pref}}(\mathit{assign})
+ +E_{\mathrm{pair}}(\mathit{assign})\\
+&+E_{\mathrm{section}}(\mathit{assign}).
+\end{aligned}
+\label{eq:eval}
 \end{equation}
-and the problem is
-\begin{equation}
-\boxed{\min_{\mathit{assign}} \mathrm{Eval}(\mathit{assign}) \quad \text{subject to} \quad \mathrm{Constr}(\mathit{assign}) = \mathsf{true}.}
-\end{equation}
-
-Every penalty is 0 or more, so a valid timetable with $\mathrm{Eval}(\mathit{assign}) = 0$ is optimal.
-
-% restore the document defaults
-\setlength{\parindent}{\savedparindent}
-\setlength{\parskip}{\savedparskip}
+We seek a complete assignment that minimizes this total
+while satisfying every hard constraint:
+\[
+\min_{\mathit{assign}}\mathrm{Eval}(\mathit{assign})
+\quad\text{subject to}\quad
+\mathrm{Constr}(\mathit{assign})=\mathsf{true}.
+\]
+All penalties are nonnegative, so a valid timetable with
+evaluation zero is globally optimal.

@@ -1,37 +1,15 @@
-\section{End-to-End Integration and Comparison}
-\subsection{Algorithm 4: Optional combined pipeline}
-\begin{algorithm}[H]
-\caption{Combined Three-Paradigm Pipeline}
-\begin{algorithmic}[1]
-\Require Scheduling instance $I$
-\Ensure Best valid timetable found, or FAILURE
-\State $a_0\gets\Call{ORFeasibility}{I}$
-\If{$a_0=\mathsf{FAILURE}$}
-  \State \Return FAILURE
-\EndIf
-\State $a_1\gets\Call{SetBasedImprove}{I,a_0}$
-\State $a_2\gets\Call{ANDOptimize}{I,a_1}$
-\State \Return $a_2$ \Comment{Optimal only if AND stage completed}
-\end{algorithmic}
-\end{algorithm}
+\section{Comparison of the Proposals}
+\label{sec:integration}
 
-\subsection{Comparison of the three paradigms}
-\begin{table}[H]
-\centering\small
-\caption{Summary of proposed models}\label{tab:comparison}
-\begin{tabularx}{\linewidth}{@{}lXXX@{}}
-\toprule
- & OR-tree & Set-based & AND-tree\\
-\midrule
-Purpose & Feasibility & Local improvement & Exact optimization\\
-State & OR-tree & Assignment fact set & AND-tree\\
-Primitive & $\Altern$ & $\EXT$ & $\Div$\\
-Control & DFS + MRV & Hill climbing & Branch-and-bound\\
-Optimal? & Not targeted & Not guaranteed & If complete\\
-\bottomrule
-\end{tabularx}
-\end{table}
-\TODO{Explain each model's pros and cons: search memory, runtime, completeness, and solution quality. Avoid claiming an AND-tree guarantees optimality if the search budget expires.}
+We will implement whichever proposal the instructor, Cooper, selects.
 
-\subsection{Unified worked example}
-\TODO{Use one small course-scheduling instance across all three models. Show the OR-tree's first feasible score, set-based's improved score, and AND-tree's exploration/proof of optimality. The same input and penalty parameters must be used in all three worked examples.}
+Both optimization examples start from the timetable found
+in Section~\ref{sec:or-example}. Under the preferences defined
+in those examples, its penalty is $5$. Set-based search
+reduces this to $3$ and then $2$. AND-tree search also reaches
+$2$ and establishes that no better timetable exists for this
+instance. The set-based stopping condition establishes only
+that no valid Move or Swap improves its result.
+
+These examples demonstrate the search steps, not performance
+on larger inputs.

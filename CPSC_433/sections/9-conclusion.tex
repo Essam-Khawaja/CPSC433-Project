@@ -1,6 +1,10 @@
 \section{Conclusion}
 \label{sec:conclusion}
-\TODO{Summarize the three models, their distinct state data structures, and why the proposed architecture is appropriate for the assignment. Do not claim experimentally verified performance before testing.}
 
-% Essam Condensed
-We proposed two complete timetabling pipelines sharing an OR-tree feasibility stage. The set-based branch offers simple, feasibility-preserving local improvement, whereas AND-tree branch-and-bound searches across alternative assignments and can prove an optimum when completed. Both use the same hard-constraint checker and evaluation objective. The proposed models and worked derivations specify how each search process can be instantiated for the course timetabling problem.
+Both proposals first find a valid timetable using OR-tree
+search. Proposal A improves it through set-based moves and
+swaps; Proposal B uses AND-tree branch-and-bound to establish
+an optimum if its search finishes. The formal definitions
+and worked examples specify how each proposal will operate.
+We will implement and test the proposal selected by the
+instructor.
