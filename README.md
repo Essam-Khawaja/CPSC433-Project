@@ -1,6 +1,6 @@
 # CPSC 433 Project — Course Timetabling via Three Search Paradigms
 
-Group project proposal for CPSC 433 (Artificial Intelligence), University of Calgary, Fall 2025.
+Group project proposal for CPSC 433 (Artificial Intelligence), University of Calgary, Fall 2026.
 It proposes two search systems for the course timetabling problem: OR-tree feasibility followed
 by set-based improvement (Proposal A), and OR-tree feasibility followed by AND-tree
 branch-and-bound (Proposal B).
