@@ -66,5 +66,16 @@ $\mathit{assign}\in\{\mathit{assign}_A,\mathit{assign}_B\}$,
 All models use the domains, constraint checks, and evaluation
 function defined in Section~\ref{sec:problem}.
 
+
+\paragraph{Implementation data structures.}
+We represent timetables using dictionaries mapping components to slots,
+with sets tracking unassigned components and arrays tracking room
+occupancy. OR-tree search uses a depth-first stack of partial assignments.
+Set-based search uses a set of assignment facts and generates Move and
+Swap candidates. AND-tree search uses a depth-first stack of partial
+assignment cases, storing lower bounds and the best complete timetable
+found so far. All three models share the same constraint checker and
+evaluation function.
+
 \setlength{\parindent}{\savedparindent}
 \setlength{\parskip}{\savedparskip}
