@@ -41,7 +41,7 @@ class Tutorial(Component):
         if lec_section is not None:
             self.is_evening = lec_section.startswith("9")
 
-        self.parents: list[Lecture] = []  # parent lectures, filled in by ProblemInstance
+        self.lectures: list[Lecture] = []  # parent lectures, filled in by ProblemInstance
 
     def is_lecture(self) -> bool:
         return False
