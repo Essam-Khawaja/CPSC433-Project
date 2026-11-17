@@ -17,17 +17,17 @@ jobs:
       - name: Compile main.tex
         uses: xu-cheng/latex-action@v4
         with:
-          working_directory: CPSC_433
+          working_directory: Proposal
           root_file: main.tex
 
       - name: Rename PDF
-        run: mv CPSC_433/main.pdf CPSC_433/proposal.pdf
+        run: mv Proposal/main.pdf Proposal/proposal.pdf
 
       # Every commit (any branch / PR): a plain PDF (no zip) on the run's summary page.
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v7
         with:
-          path: CPSC_433/proposal.pdf
+          path: Proposal/proposal.pdf
           archive: false
 
       # Pushes to main only: stage the PDF for GitHub Pages.
@@ -35,7 +35,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           mkdir site
-          cp CPSC_433/proposal.pdf site/
+          cp Proposal/proposal.pdf site/
           # Site root redirects straight to the PDF.
           echo '<meta http-equiv="refresh" content="0; url=proposal.pdf">' > site/index.html
 

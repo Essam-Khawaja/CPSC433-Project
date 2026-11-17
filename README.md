@@ -51,18 +51,18 @@ Then, a final writeOutput function should be good enough for the rest of the tin
 ## Layout
 
 ```
-CPSC_433/
+Proposal/
 ├── main.tex              # Preamble, notation macros, title page, bibliography
-├── sections/             # One file per section, so members can edit in parallel
-│   ├── abstract.tex
-│   ├── 1-introduction.tex … 9-conclusion.tex
-│   └── appendix-a-constraints.tex, appendix-b-derivations.tex
-└── D2L Instructions/     # Assignment and problem descriptions from D2L
+└── sections/             # One file per section, so members can edit in parallel
+    ├── abstract.tex
+    ├── 1-introduction.tex … 9-conclusion.tex
+    └── appendix-a-constraints.tex, appendix-b-derivations.tex
+D2L Instructions/         # Assignment and problem descriptions from D2L
 ```
 
 ## Building
 
-The PDF is built by CI and is not tracked in git (`CPSC_433/main.pdf` is ignored).
+The PDF is built by CI and is not tracked in git (`Proposal/main.pdf` is ignored).
 
 - **`main`:** every push rebuilds the PDF and deploys it to the link above.
 - **Other branches and PRs:** the PDF is attached to that run on the
@@ -71,7 +71,7 @@ The PDF is built by CI and is not tracked in git (`CPSC_433/main.pdf` is ignored
 To build locally:
 
 ```bash
-cd CPSC_433 && latexmk -pdf main.tex
+cd Proposal && latexmk -pdf main.tex
 ```
 
 ## Workflow
