@@ -6,3 +6,13 @@ CPSC_433/.texpadtmp
 
 # Built by CI (Build PDF workflow); not tracked
 CPSC_433/main.pdf
+
+# Local Python virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Generated Python bytecode
+__pycache__/
+*.py[cod]
