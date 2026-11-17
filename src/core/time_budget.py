@@ -1,0 +1,1 @@
+"""Shared search time budget."""

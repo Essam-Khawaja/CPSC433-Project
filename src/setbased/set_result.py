@@ -1,0 +1,1 @@
+"""Set-based search result."""
