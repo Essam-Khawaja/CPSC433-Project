@@ -34,7 +34,7 @@ class Slot:
 
         self.end = self.start + length
 
-    def overlaps(self, other: Slot) -> bool:
+    def overlaps(self, other) -> bool:
         # No shared day means no overlap
         shared_days = self.days & other.days
         if not shared_days:
