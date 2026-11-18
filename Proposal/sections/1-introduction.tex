@@ -1,8 +1,0 @@
-\section{Introduction}
-\label{sec:intro}
-
-Constructing a university timetable requires assigning lectures and tutorials to available times while respecting room capacities, avoiding scheduling conflicts, and accommodating preferences. For this project, we construct one weekly timetable that repeats throughout the semester (13 weeks). A valid timetable must satisfy every hard constraint, while its quality is measured by penalties for unmet soft constraints. Our objective is to find a valid timetable with the lowest possible total penalty.
-
-The number of possible assignments grows exponentially as offerings and available slots increase. We therefore propose two search systems: OR-tree constraint satisfaction followed by set-based local search, or OR-tree constraint satisfaction followed by AND-tree branch-and-bound.
-
-The following sections define the scheduling problem and explain each search model, its control, and its stopping conditions. Worked examples demonstrate how the rules are applied and how the search progresses.
