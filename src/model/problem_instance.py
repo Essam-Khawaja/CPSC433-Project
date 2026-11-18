@@ -2,26 +2,31 @@
 Problem instance, component domains, conflict graph, and lookups.
 """
 
+from model.components import Tutorial
+from model.slot import Slot
+
 
 class ProblemInst:
     def __init__(self, name, lectures, tutorials, lec_slots, tut_slots, not_compatible, unwanted, preferences, pairs, partial_assignments):
         # Raw data from the parser
         self.name = name
         self.lectures = lectures
-        self.tutorials = tutorials
+        self.tutorials = list(tutorials)
         self.lec_slots = lec_slots
-        self.tut_slots = tut_slots
-        self.not_compatible = not_compatible   # list of (comp, comp)
+        self.tut_slots = list(tut_slots)
+        self.not_compatible = list(not_compatible)   # list of (comp, comp)
         self.unwanted = unwanted               # list of (comp, slot)
-        self.partial = partial_assignments     # list of (comp, slot)
+        self.partial = list(partial_assignments)     # list of (comp, slot)
         self.preferences = preferences         # list of (comp, slot, value)
         self.pairs = pairs                     # list of (comp, comp)
 
         # Built below
         self.domains = {}     # component -> list of slots it is allowed in
         self.conflicts = {}   # component -> set of components it can't overlap
+        self.special_bookings = []
 
-        # Order matters: conflicts need the tutorial links
+        # Add mandatory bookings before building their links, conflicts, and domains.
+        self.addSpecialBookings()
         self.linkTutorials()
         self.buildConflicts()
         self.buildDomains()
@@ -31,6 +36,40 @@ class ProblemInst:
 
     def domain(self, comp):
         return self.domains[comp]
+
+    def addSpecialBookings(self):
+        # C13: one assessment per course, not one per lecture section.
+        for source_number, booking_number in ((351, 851), (413, 913)):
+            triggered = any(
+                lecture.program == "CPSC" and lecture.number == source_number
+                for lecture in self.lectures
+            )
+            if not triggered:
+                continue
+
+            booking_id = f"CPSC {booking_number} TUT 01"
+            booking = next((t for t in self.tutorials if t.id == booking_id), None)
+            if booking is None:
+                booking = Tutorial(booking_id, "CPSC", booking_number, False, None, "01")
+                self.tutorials.append(booking)
+            self.special_bookings.append(booking)
+
+            fixed_slot = next(
+                (slot for slot in self.tut_slots if slot.day == "TU" and slot.start == 18 * 60),
+                None,
+            )
+            if fixed_slot is None:
+                # An omitted slot has zero capacity. Do not invent a room for it.
+                # The checker will reject the required booking as infeasible.
+                fixed_slot = Slot("TUT", "TU", "18:00", 0, 0, 0)
+                self.tut_slots.append(fixed_slot)
+
+            # Keep any existing restrictions: contradictory fixed slots must fail.
+            self.partial.append((booking, fixed_slot))
+
+            for component in self.lectures + self.tutorials:
+                if component.program == "CPSC" and component.number == source_number:
+                    self.not_compatible.append((booking, component))
 
     def linkTutorials(self):
         # Links the lectures and tutorials together
@@ -50,7 +89,7 @@ class ProblemInst:
                 tutorial.lectures.append(lecture)
                 lecture.tutorials.append(tutorial)
 
-            if len(tutorial.lectures) == 0:
+            if len(tutorial.lectures) == 0 and tutorial not in self.special_bookings:
                 print(f"Warning: no lecture found for {tutorial}")
 
     def addConflict(self, a, b):
