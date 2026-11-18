@@ -1,5 +1,8 @@
 """Timetable assignments and slot counters."""
 
+from sqlite3 import SQLITE_BUSY_SNAPSHOT
+
+
 class Assignment:
     def __init__(self) -> None:
         self.placements: dict = {} #component -> slot
@@ -22,3 +25,15 @@ class Assignment:
         new.counts = self.counts.copy()
         new.al_counts = self.al_counts.copy()
         return new
+
+    # We also need a remove method.
+    def remove(self, component):
+        # Look up the component's current slot.
+        slot = self.placements[component]
+        # Delete the component's dictionary entry
+        del self.placements[component]
+        # Decrease the slot's occupancy.
+        self.counts[slot] -= 1
+
+        if component.al_required:
+            self.al_counts[slot] = self.al_counts.get(slot,0) - 1

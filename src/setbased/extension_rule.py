@@ -1,5 +1,36 @@
 """ExtensionRule, Move, and Swap representations."""
 
+class ExtensionRule:
+    def apply(self, current, problem, checker):
+        # Depending on which object is calling apply, the Move or Swap version of replacements will be called.
+        changes = self.replacements(current)
+        candidate = current.copy()
+
+
+class Move(ExtensionRule):
+    # Store one component and one destination.
+    def __init__(self, component, destination):
+        self.component = component  # Which component changes.
+        self.destination_slot = destination # Where it should go.
+
+    def replacements(self, current):
+        return {self.component: self.destination}
+
+class Swap(ExtensionRule):
+    def __init__(self, a, b):
+self.a = a
+        self.b = b
+
+    # Return a dictionary describing proposed changes.
+    def replacements(self, current):
+        # Create a dictionary DESCRIBING lecture A and lecture B's swapped timeslots.
+        changes = {
+            self.a: current.placements[self.b],
+            self.b: current.placements[self.a]
+        }
+
+        return changes
+
 # PSEUDOCODE ONLY. See the final proposal PDF, Section 5, for the search model.
 # A complete Assignment represents the set of Assigned(component, slot) facts.
 # Rules produce new assignments; they never mutate the current assignment.
@@ -7,8 +38,6 @@
 #
 # CLASS ExtensionRule
 #
-#     METHOD replacements(current)
-#         abstract: return a mapping of changed component -> destination slot
 #
 #     METHOD apply(current, problem, checker)
 #         REQUIRE current is a complete valid assignment
@@ -38,13 +67,3 @@
 #     METHOD replacements(current)
 #         return {component: destination}
 #
-# CLASS Swap EXTENDS ExtensionRule
-#
-#     CONSTRUCTOR(a, b)
-#         store the two distinct components a and b
-#
-#     METHOD replacements(current)
-#         return {
-#             a: current.placements[b],
-#             b: current.placements[a]
-#         }

@@ -17,7 +17,7 @@
 # Unlike an unsuccessful OR-tree result, TIMEOUT here retains an assignment.
 # All outcomes contain a complete valid timetable and its soft-constraint score.
 
-from proj.src.core.assignment import Assignment
+from core.assignment import Assignment
 class SetResult:
     def __init__(self, outcome: str, assignment: Assignment, score: int) -> None:
         if outcome not in ("ZERO_PENALTY", "LOCAL_OPTIMUM", "TIMEOUT"):
