@@ -12,7 +12,7 @@ class SetBasedHillClimb:
     def __init__(self, problem: ProblemInst, checker: ConstraintChecker, evaluator: Evaluator, budget)-> None:
         self.problem = problem  # The problem assignment
         self.checker = checker  # The constraint checker
-        self.evaluator = evaluator  # The evaluati
+        self.evaluator = evaluator  # The evaluator
         self.budget = budget    # The budget of the problem; how much we want to spend to solve it
         self.neighbourhood = NeighbourhoodGenerator(problem)
 

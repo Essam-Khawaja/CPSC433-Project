@@ -6,5 +6,5 @@ class OrResult:
         if outcome == "SUCCESS":
             self.assignment = assignment
         else:
-            # Keep assignment as None for failure and timeout makes sense.
+            # Keep assignment as None for failure and timeout makes sense
             self.assignment = None
