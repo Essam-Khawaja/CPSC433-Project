@@ -17,6 +17,5 @@ env/
 __pycache__/
 *.py[cod]
 
-# Claude Code: per-session git worktrees and personal settings
-.claude/worktrees/
-.claude/settings.local.json
+# Claude Code: local tool state (worktrees, settings) never belongs in the repo
+.claude/
