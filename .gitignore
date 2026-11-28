@@ -16,3 +16,7 @@ env/
 # Generated Python bytecode
 __pycache__/
 *.py[cod]
+
+# Claude Code: per-session git worktrees and personal settings
+.claude/worktrees/
+.claude/settings.local.json
